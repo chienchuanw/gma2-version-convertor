@@ -195,6 +195,13 @@ export default function Home() {
                 file was likely hand-edited; conversion will set both consistently.
               </p>
             )}
+            {file.detect.partial && (
+              <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
+                Note: this file&rsquo;s version attributes are incomplete (not all of
+                major/minor/stream are present). Conversion rewrites the fields that exist
+                without adding new ones.
+              </p>
+            )}
           </div>
 
           {/* Target selector */}

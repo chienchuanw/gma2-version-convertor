@@ -40,9 +40,13 @@ schema. (Content-aware downgrade is a deliberate future phase "B".)
   attributes, **all set to the same target version triple** — making the file look exactly like
   a native export from the target console. (`stream_vers` is the de-facto gate, but writing all
   parts consistently is the safest, most native-looking result.)
-- If the source file has **no `schemaLocation` attribute**, rewrite only `*_vers` and don't inject
-  a new attribute (stay faithful). If `schemaLocation` and `*_vers` **disagree** (non-genuine file),
-  surface both to the user and use the **higher** as the effective source for the downgrade filter.
+- Each version field is rewritten **in place**: `*_vers` attributes are matched individually
+  (order-independent, single- or double-quoted) so a reordered file can never silently leave the
+  `stream_vers` gate un-lowered. Only fields that are **present** are rewritten; missing fields are
+  **never injected** (stay faithful — a genuine export without `schemaLocation` is valid).
+- If the source has **partial `*_vers`** (1–2 of the three) it is flagged and the user is warned;
+  the present fields are still rewritten. If `schemaLocation` and `*_vers` **disagree** (non-genuine
+  file), surface both and use the **higher** as the effective source for the downgrade filter.
 - **Precise string replacement only.** Every other byte of the file is preserved: indentation,
   CRLF/LF line endings, BOM, encoding declaration, attribute order, comments.
 - **Downgrade only.** Source version is auto-detected (primary: `*_vers`; fallback:
