@@ -111,3 +111,49 @@ describe("convert", () => {
     );
   });
 });
+
+describe("robust *_vers handling", () => {
+  it("detects and rewrites *_vers regardless of attribute order (gate is lowered)", () => {
+    const reordered =
+      '<MA stream_vers="60" minor_vers="9" major_vers="3" xsi:schemaLocation="http://schemas.malighting.de/grandma2/xml/3.9.60/MA.xsd">\n</MA>';
+    expect(detectVersion(reordered).attrVersion).toEqual({
+      major: 3,
+      minor: 9,
+      stream: 60,
+    });
+    const out = convert(reordered, { major: 3, minor: 3, stream: 4 });
+    expect(out.output).toContain('stream_vers="4"');
+    expect(out.output).toContain('minor_vers="3"');
+    expect(out.output).toContain("xml/3.3.4/MA.xsd");
+    expect(out.output).not.toContain("3.9.60");
+    expect(out.output).not.toContain('stream_vers="60"');
+  });
+
+  it("supports single-quoted attributes and preserves the quote character", () => {
+    const sq =
+      "<MA xsi:schemaLocation=\"http://schemas.malighting.de/grandma2/xml/3.9.60/MA.xsd\" major_vers='3' minor_vers='9' stream_vers='60'>\n</MA>";
+    expect(detectVersion(sq).attrVersion).toEqual({ major: 3, minor: 9, stream: 60 });
+    const out = convert(sq, { major: 3, minor: 3, stream: 4 });
+    expect(out.output).toContain("major_vers='3' minor_vers='3' stream_vers='4'");
+    expect(out.output).toContain("xml/3.3.4/MA.xsd");
+  });
+
+  it("flags partial *_vers, rewrites present fields in place, and injects nothing", () => {
+    // major/minor present, stream_vers missing (a hand-edited anomaly).
+    const partial =
+      '<MA xsi:schemaLocation="http://schemas.malighting.de/grandma2/xml/3.9.60/MA.xsd" major_vers="3" minor_vers="9">\n</MA>';
+    const d = detectVersion(partial);
+    expect(d.partial).toBe(true);
+    expect(d.attrVersion).toBeNull(); // incomplete triple
+    expect(d.sourceVersion).toEqual({ major: 3, minor: 9, stream: 60 }); // from schema path
+    const out = convert(partial, { major: 3, minor: 3, stream: 4 });
+    expect(out.output).toContain('major_vers="3" minor_vers="3"');
+    expect(out.output).toContain("xml/3.3.4/MA.xsd");
+    expect(out.output).not.toContain("stream_vers"); // not injected
+    expect(out.output).not.toContain("3.9.60");
+  });
+
+  it("a complete, normal file is not flagged partial", () => {
+    expect(detectVersion(genuine3960).partial).toBe(false);
+  });
+});
