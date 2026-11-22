@@ -6,11 +6,11 @@ import {
   convert,
   detectVersion,
   diffFields,
-  NoVersionInfoError,
   NotGma2XmlError,
   type DetectResult,
   type Version,
 } from "@/lib/convert";
+import { createLatestGuard } from "@/lib/latest";
 import {
   CATALOG,
   commonTargets,
@@ -41,7 +41,12 @@ interface LoadedFile {
 interface LoadError {
   title: string;
   body: string;
+  /** Raw text to show verbatim (e.g. the unreadable <MA> tag). */
+  raw?: string;
 }
+
+const RAW_MAX = 600;
+const truncate = (s: string) => (s.length > RAW_MAX ? `${s.slice(0, RAW_MAX)}…` : s);
 
 /** Read a file preserving a leading UTF-8 BOM (TextDecoder ignoreBOM keeps it). */
 async function readFilePreservingBom(file: File): Promise<string> {
@@ -69,12 +74,17 @@ export default function Home() {
   const [dragging, setDragging] = useState(false);
   const [choice, setChoice] = useState<string>(""); // catalog label or CUSTOM
   const [custom, setCustom] = useState({ major: "", minor: "", stream: "" });
+  const [loading, setLoading] = useState<string | null>(null); // name of the file being read
   const inputRef = useRef<HTMLInputElement>(null);
+  const [guard] = useState(createLatestGuard);
 
   const loadFile = useCallback(async (f: File) => {
+    // A newer selection supersedes any read still in flight.
+    const isCurrent = guard.start();
     setError(null);
     setFile(null);
     setChoice("");
+    setLoading(null);
     if (!f.name.toLowerCase().endsWith(".xml")) {
       setError({
         title: "Not an .xml file",
@@ -82,27 +92,34 @@ export default function Home() {
       });
       return;
     }
+    setLoading(f.name);
     try {
       const text = await readFilePreservingBom(f);
+      if (!isCurrent()) return;
       const detect = detectVersion(text); // throws NotGma2XmlError
-      if (detect.sourceVersion === null) throw new NoVersionInfoError();
+      if (detect.sourceVersion === null) {
+        setError({
+          title: "No version information",
+          body: `The <MA> tag in ${f.name} has no readable version marker (no schemaLocation version path and no numeric *_vers attributes), so there is nothing to convert. This is what was found:`,
+          raw: truncate(detect.rawTag),
+        });
+        return;
+      }
       setFile({ name: f.name, text, detect });
     } catch (e) {
+      if (!isCurrent()) return;
       if (e instanceof NotGma2XmlError) {
         setError({
           title: "Not a grandMA2 file",
           body: `${f.name} has no <MA> root tag. Choose an XML file exported from grandMA2 or grandMA2 onPC.`,
         });
-      } else if (e instanceof NoVersionInfoError) {
-        setError({
-          title: "No version information",
-          body: `The <MA> tag in ${f.name} has no schemaLocation path and no *_vers attributes, so there is nothing to convert.`,
-        });
       } else {
         setError({ title: "Couldn’t read this file", body: `${f.name} could not be read.` });
       }
+    } finally {
+      if (isCurrent()) setLoading(null);
     }
-  }, []);
+  }, [guard]);
 
   // Accept drops anywhere on the page (also after a file is loaded, to replace it).
   // Without this, a drop outside the dropzone makes the browser open the file and
@@ -208,6 +225,15 @@ export default function Home() {
                 meta={`Detected grandMA2 ${versionString(source)}`}
                 onReplace={pick}
               />
+            ) : loading ? (
+              <div
+                role="status"
+                className="flex h-[168px] w-full flex-col items-center justify-center gap-2 rounded-xl border-[1.5px] border-dashed border-accent bg-accent-soft"
+              >
+                <span className="text-accent-strong">{Icon.spinner(20)}</span>
+                <span className="text-sm font-medium">Reading {loading}…</span>
+                <span className="text-xs text-fg-muted">Large exports can take a moment.</span>
+              </div>
             ) : (
               <button
                 type="button"
@@ -236,6 +262,11 @@ export default function Home() {
             {error && (
               <Callout tone="error" title={error.title}>
                 {error.body}
+                {error.raw && (
+                  <pre className="mt-2 whitespace-pre-wrap break-all rounded-md border border-danger-border bg-page px-3 py-2 font-mono text-fg-muted">
+                    {error.raw}
+                  </pre>
+                )}
               </Callout>
             )}
             {file?.detect.mismatch && file.detect.schemaVersion && file.detect.attrVersion && (
