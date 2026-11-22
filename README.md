@@ -36,7 +36,8 @@ Things a version-marker rewrite can't fix:
 - Elements only the newer version knows are **skipped** by the older one on import (e.g. newer cue
   timing options) — check the result on the target.
 - **Don't import newer `UserProfiles`** into a much older version: a 3.9.63 user-profile export
-  crashed onPC 3.3.4.1 (#19). Recreate profiles on the target instead.
+  crashed onPC 3.3.4.1 (#19). The tool warns when you convert a user-profile file; recreate profiles
+  on the target instead.
 - `.show.gz` files are a **binary** format, not XML, so they can't be converted. Export the show to
   XML on the newer version, convert the files, and import them into the older one.
 
