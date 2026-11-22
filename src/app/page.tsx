@@ -288,8 +288,9 @@ export default function Home() {
             )}
             {file?.detect.partial && (
               <Callout tone="warning" title="Version attributes incomplete">
-                Not all of major_vers / minor_vers / stream_vers are present in the &lt;MA&gt;
-                tag. Conversion rewrites the fields that exist and never adds new ones.
+                {`${file.detect.missingVers.join(" and ")} ${
+                  file.detect.missingVers.length === 1 ? "is" : "are"
+                } missing from the <MA> tag. Conversion rewrites the fields that exist and never adds new ones.`}
               </Callout>
             )}
           </StepCard>
