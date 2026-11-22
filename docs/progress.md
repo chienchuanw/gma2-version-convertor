@@ -1,20 +1,20 @@
 # Development Progress
 
-_Last updated: 2026-11-22 · Current release: **v1.0.0**_
+_Last updated: 2026-11-22 · Current release: **v1.1.0**_
 
 ## Status
 
-**V1 is complete and live** at https://gma2-converter.vercel.app (Vercel project
+**V1.1 is live** at https://gma2-converter.vercel.app (Vercel project
 `gma2-converter`, production deployed from `main` via the Git integration).
 
 | Area | State |
 | --- | --- |
 | Conversion core (`src/lib/convert.ts`) | Done — marker rewrite, hardened detection, diff fields |
 | Version catalog (`src/lib/versions.ts`, `docs/grandma2-versions.md`) | Done — 2.5.3 → 3.9.63 |
-| Converter UI (`src/app/page.tsx`) | Done — Figma redesign (step cards, diff table, common targets) |
+| Converter UI (`src/app/page.tsx`) | Done — Figma redesign (step cards, diff table, common targets); raw `<MA>` tag, reading state, field-level warnings |
 | Privacy guard | Done — CSP `connect-src 'self'` blocks any off-origin request |
 | Deployment | Done — production on Vercel |
-| Tests | 37 passing (Vitest, core only; UI untested by design in V1) |
+| Tests | 51 passing (Vitest, core + read-race guard; UI verified in the browser) |
 
 ## Milestones
 
@@ -28,6 +28,9 @@ _Last updated: 2026-11-22 · Current release: **v1.0.0**_
 | 2026-11-22 | [#5](https://github.com/chienchuanw/gma2-version-convertor/pull/5) | Progress doc; version 0.1.0 → 1.0.0 |
 | 2026-11-22 | — | **v1.0.0** released (tag `v1.0.0`, GitHub Release) |
 | 2026-11-22 | — | Adopted `dev` → `main` branch flow; `dev` is the GitHub default branch |
+| 2026-11-22 | [#15](https://github.com/chienchuanw/gma2-version-convertor/pull/15) | Raw `<MA>` tag on unreadable version, reading state, superseded reads ignored (closes #10, #11) |
+| 2026-11-22 | [#16](https://github.com/chienchuanw/gma2-version-convertor/pull/16) | Name missing vs non-numeric `*_vers` fields; exact attribute-name matching (closes #13) |
+| 2026-11-22 | — | **v1.1.0** released (tag `v1.1.0`, GitHub Release) |
 
 ## Branch flow
 
@@ -43,10 +46,7 @@ feature/fix branch ──PR──▶ dev ──PR (release)──▶ main ──
 
 | Type | Issue |
 | --- | --- |
-| Bug | [#10](https://github.com/chienchuanw/gma2-version-convertor/issues/10) Raw-tag display and processing state from SPEC are not implemented |
-| Bug | [#11](https://github.com/chienchuanw/gma2-version-convertor/issues/11) A slower earlier file read can overwrite a newer file selection |
 | Bug | [#12](https://github.com/chienchuanw/gma2-version-convertor/issues/12) Non-UTF-8 input is silently re-encoded as UTF-8 on download |
-| Feat | [#13](https://github.com/chienchuanw/gma2-version-convertor/issues/13) Name the missing `*_vers` field(s) in the partial-version warning |
 | Feat | [#7](https://github.com/chienchuanw/gma2-version-convertor/issues/7) Batch-convert exported showfile XML folders with zip download |
 | Doc | [#6](https://github.com/chienchuanw/gma2-version-convertor/issues/6) Verify `.show.gz` format before keeping it on the roadmap |
 | Doc | [#8](https://github.com/chienchuanw/gma2-version-convertor/issues/8) Verify downgraded files load on real older grandMA2 software |
