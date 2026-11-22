@@ -24,6 +24,7 @@ other origin — you can verify it in your browser's DevTools.
 
 See [`SPEC.md`](./SPEC.md) for the full specification and
 [`docs/grandma2-versions.md`](./docs/grandma2-versions.md) for the version reference.
+Development status and milestones live in [`docs/progress.md`](./docs/progress.md).
 
 ## Tech
 
