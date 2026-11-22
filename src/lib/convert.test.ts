@@ -201,3 +201,24 @@ describe("diffFields", () => {
     expect(() => diffFields("<root/>", t334)).toThrow(NotGma2XmlError);
   });
 });
+
+describe("convert / diffFields consistency on malformed values", () => {
+  const t334 = { major: 3, minor: 3, stream: 4 };
+  const odd =
+    '<MA xsi:schemaLocation="http://schemas.malighting.de/grandma2/xml/03.09.060/MA.xsd" major_vers="3.5" minor_vers="9" stream_vers="60">';
+
+  it("does not rewrite a non-integer *_vers value it cannot read", () => {
+    const { after } = convert(odd, { major: 2, minor: 5, stream: 3 });
+    expect(after).toContain('major_vers="3.5"');
+    expect(after).toContain('minor_vers="5"');
+  });
+
+  it("agrees with convert: unreadable field is reported as absent", () => {
+    const rows = diffFields(odd, t334);
+    expect(rows[1]).toEqual({ field: "major_vers", before: null, after: null, changed: false });
+  });
+
+  it("shows the schema path version exactly as written", () => {
+    expect(diffFields(odd, t334)[0].before).toBe("03.09.060");
+  });
+});
