@@ -39,6 +39,19 @@ feature/fix branch ──PR──▶ dev ──PR (release)──▶ main ──
 - `main`: production only — updated from `dev` when a release is ready.
 - After each release: tag on `main`, publish the GitHub Release, update this file.
 
+## Open issues (v1.x backlog)
+
+| Type | Issue |
+| --- | --- |
+| Bug | [#10](https://github.com/chienchuanw/gma2-version-convertor/issues/10) Raw-tag display and processing state from SPEC are not implemented |
+| Bug | [#11](https://github.com/chienchuanw/gma2-version-convertor/issues/11) A slower earlier file read can overwrite a newer file selection |
+| Bug | [#12](https://github.com/chienchuanw/gma2-version-convertor/issues/12) Non-UTF-8 input is silently re-encoded as UTF-8 on download |
+| Feat | [#13](https://github.com/chienchuanw/gma2-version-convertor/issues/13) Name the missing `*_vers` field(s) in the partial-version warning |
+| Feat | [#7](https://github.com/chienchuanw/gma2-version-convertor/issues/7) Batch-convert exported showfile XML folders with zip download |
+| Doc | [#6](https://github.com/chienchuanw/gma2-version-convertor/issues/6) Verify `.show.gz` format before keeping it on the roadmap |
+| Doc | [#8](https://github.com/chienchuanw/gma2-version-convertor/issues/8) Verify downgraded files load on real older grandMA2 software |
+| Doc | [#9](https://github.com/chienchuanw/gma2-version-convertor/issues/9) Confirm inferred catalog versions (3.9.63, 2.9.1, 2.7.0, 2.6.0) |
+
 ## Next (out of V1 scope)
 
 Tracked in `SPEC.md` → _Future_:
