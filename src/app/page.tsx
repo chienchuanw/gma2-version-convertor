@@ -100,7 +100,7 @@ export default function Home() {
       if (detect.sourceVersion === null) {
         setError({
           title: "No version information",
-          body: `The <MA> tag in ${f.name} has no readable version marker (no schemaLocation version path and no numeric *_vers attributes), so there is nothing to convert. This is what was found:`,
+          body: `The <MA> tag in ${f.name} has no readable version marker (no schemaLocation version path and no complete set of numeric major/minor/stream_vers attributes), so there is nothing to convert. This is what was found:`,
           raw: truncate(detect.rawTag),
         });
         return;
@@ -231,8 +231,17 @@ export default function Home() {
                 className="flex h-[168px] w-full flex-col items-center justify-center gap-2 rounded-xl border-[1.5px] border-dashed border-accent bg-accent-soft"
               >
                 <span className="text-accent-strong">{Icon.spinner(20)}</span>
-                <span className="text-sm font-medium">Reading {loading}…</span>
+                <span className="max-w-full px-4 text-sm font-medium break-all">
+                  Reading {loading}…
+                </span>
                 <span className="text-xs text-fg-muted">Large exports can take a moment.</span>
+                <button
+                  type="button"
+                  onClick={pick}
+                  className="mt-1 text-xs font-medium text-accent-strong hover:underline"
+                >
+                  Choose a different file
+                </button>
               </div>
             ) : (
               <button
