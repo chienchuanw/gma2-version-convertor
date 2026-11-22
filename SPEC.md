@@ -76,7 +76,14 @@ schema. (Content-aware downgrade is a deliberate future phase "B".)
   above the full dropdown.
 - Output filename gets a **target-version suffix** (`Name_3.3.4.xml`) — never overwrites the
   source.
-- **Single file** in V1; architecture leaves room for **batch** (UI-level loop + zip) later.
+- **Batch**: several files or a whole folder (picked with "Choose a folder" or dropped; read
+  recursively, only `*.xml` kept, macOS `._*` files ignored) are converted to one target and
+  downloaded as **one zip** that keeps the relative folder structure and original file names
+  (`<folder>_<target>.zip`). Each file gets a status (ok / warning: mismatch or partial / skipped:
+  not grandMA2, no version info, or unsupported encoding); skipped files are listed and never put
+  in the zip. The batch source is the **highest** detected version, so the target list offers
+  versions older than it; files already at or below the target are copied unchanged. Pure logic
+  lives in `src/lib/batch.ts`. A single picked file keeps the plain `.xml` download.
 
 ### Version ordering
 - Compare versions by the full triple, in order `major → minor → stream`. Used for: dropdown
@@ -105,7 +112,6 @@ schema. (Content-aware downgrade is a deliberate future phase "B".)
 ## Future (out of V1 scope)
 - **B: content-aware downgrade** — understand per-version schema differences and strip/transform
   elements an older version cannot handle, so the file genuinely loads clean.
-- Batch / multi-file conversion with zip download.
 - i18n (zh-TW), arbitrary-direction conversion if a use case emerges.
 
 ## Version table — DONE
