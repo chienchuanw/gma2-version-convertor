@@ -20,6 +20,8 @@ export interface DetectResult {
   mismatch: boolean;
   /** True when *_vers is partially present (1 or 2 of the three) — a hand-edited anomaly. */
   partial: boolean;
+  /** The opening <MA ...> tag exactly as written, for showing the user what was found. */
+  rawTag: string;
 }
 
 /** Thrown when the input is not a grandMA2 XML file (no <MA> root element). */
@@ -113,6 +115,7 @@ export function detectVersion(xml: string): DetectResult {
     sourceVersion,
     mismatch,
     partial: presentCount > 0 && presentCount < 3,
+    rawTag: tag,
   };
 }
 

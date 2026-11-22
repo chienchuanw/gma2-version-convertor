@@ -222,3 +222,12 @@ describe("convert / diffFields consistency on malformed values", () => {
     expect(diffFields(odd, t334)[0].before).toBe("03.09.060");
   });
 });
+
+describe("detectVersion rawTag", () => {
+  it("returns the opening <MA> tag exactly as written", () => {
+    const tag = '<MA xsi:schemaLocation="http://x/xml/3.x.60/MA.xsd" major_vers=\'three\'>';
+    const r = detectVersion(`<?xml version="1.0"?>\n${tag}\n</MA>`);
+    expect(r.rawTag).toBe(tag);
+    expect(r.sourceVersion).toBeNull();
+  });
+});
