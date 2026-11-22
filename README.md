@@ -5,7 +5,11 @@ grandMA2 / grandMA2 onPC can load files written by a newer version. A higher-ver
 load lower-version files, but not the reverse — this tool rewrites a newer file's version marker
 down to a target you choose.
 
-Everything runs **client-side**: files never leave your machine. Deployed on Vercel.
+**Use it:** https://gma2-converter.vercel.app
+
+Everything runs **client-side**: files never leave your machine. This is enforced by a
+Content-Security-Policy (`connect-src 'self'`), so the page cannot make network requests to any
+other origin — you can verify it in your browser's DevTools.
 
 ## What it does (V1)
 
