@@ -57,6 +57,5 @@ feature/fix branch ──PR──▶ dev ──PR (release)──▶ main ──
 Tracked in `SPEC.md` → _Future_:
 
 - **B: content-aware downgrade** — strip/transform elements an older schema cannot handle.
-- Batch / multi-file conversion with zip download.
 - i18n (zh-TW); arbitrary-direction conversion if a use case emerges.
 - Reuse the core in an MCP server / VS Code extension.

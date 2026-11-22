@@ -22,6 +22,10 @@ other origin — you can verify it in your browser's DevTools.
 - Pick a target from the known-release dropdown, or enter a custom `major.minor.stream` triple.
 - Shows a source → target summary with the `<MA>` line before/after, then downloads the result with
   a version suffix (e.g. `Show_3.3.4.xml`) — never overwriting your source.
+- **Whole show exports**: pick or drop a folder (e.g. the USB stick after "Export High Show") or
+  several files. Every grandMA2 `.xml` inside is converted to one target and downloaded as a zip
+  with the same folder structure and file names, ready to copy back for "Import Low Show".
+  Non-grandMA2 files are listed as skipped.
 
 ## Verified on real grandMA2 software
 
@@ -64,4 +68,3 @@ auto-deployed to Vercel) only for a tagged release.
 ## Roadmap (not in V1)
 
 - Content-aware downgrade (transform elements an older schema can't handle).
-- Batch / multi-file conversion with zip download.
