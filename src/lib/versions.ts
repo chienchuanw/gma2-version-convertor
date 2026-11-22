@@ -18,7 +18,7 @@ export interface CatalogEntry {
  * input covers beta/interim builds with raw stream counters (e.g. 3.1.229).
  */
 export const CATALOG: CatalogEntry[] = [
-  { label: "3.9.63", version: { major: 3, minor: 9, stream: 63 }, year: 2026, confidence: "inferred" },
+  { label: "3.9.63", version: { major: 3, minor: 9, stream: 63 }, year: 2026, confidence: "verified" },
   { label: "3.9.61", version: { major: 3, minor: 9, stream: 61 }, year: 2025, confidence: "verified" },
   { label: "3.9.60", version: { major: 3, minor: 9, stream: 60 }, year: 2020, confidence: "verified", priority: true },
   { label: "3.9.51", version: { major: 3, minor: 9, stream: 51 }, year: 2020, confidence: "verified" },
