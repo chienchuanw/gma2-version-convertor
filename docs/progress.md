@@ -5,7 +5,7 @@ _Last updated: 2026-11-22 · Current release: **v1.0.0**_
 ## Status
 
 **V1 is complete and live** at https://gma2-converter.vercel.app (Vercel project
-`gma2-converter`, deployed from `main` via the Git integration).
+`gma2-converter`, production deployed from `main` via the Git integration).
 
 | Area | State |
 | --- | --- |
@@ -25,7 +25,19 @@ _Last updated: 2026-11-22 · Current release: **v1.0.0**_
 | 2026-06-29 | [#2](https://github.com/chienchuanw/gma2-version-convertor/pull/2) | Harden version detection: order-independent, quote-flexible, partial-aware |
 | 2026-11-22 | [#3](https://github.com/chienchuanw/gma2-version-convertor/pull/3) | UI redesign from Figma; diff table and output kept in lockstep; page-wide drop |
 | 2026-11-22 | [#4](https://github.com/chienchuanw/gma2-version-convertor/pull/4) | Privacy CSP header; live URL in README |
-| 2026-11-22 | — | **v1.0.0** released |
+| 2026-11-22 | [#5](https://github.com/chienchuanw/gma2-version-convertor/pull/5) | Progress doc; version 0.1.0 → 1.0.0 |
+| 2026-11-22 | — | **v1.0.0** released (tag `v1.0.0`, GitHub Release) |
+| 2026-11-22 | — | Adopted `dev` → `main` branch flow; `dev` is the GitHub default branch |
+
+## Branch flow
+
+```
+feature/fix branch ──PR──▶ dev ──PR (release)──▶ main ──▶ Vercel production + tag vX.Y.Z
+```
+
+- `dev`: integration branch; every feature/fix PR targets it.
+- `main`: production only — updated from `dev` when a release is ready.
+- After each release: tag on `main`, publish the GitHub Release, update this file.
 
 ## Next (out of V1 scope)
 
