@@ -124,7 +124,9 @@ effects 34, plus image pool, layouts, presets, executor pages, timecodes and use
 
 - **`UserProfiles` crashed onPC 3.3.4.1** (`ACCESS_VIOLATION` right after
   `No xml node definition for "ColorWindowSettings" in xml class "UserSettings"`). Don't import
-  newer user profiles into a much older version; recreate them on the target instead.
+  newer user profiles into a much older version; recreate them on the target instead. The
+  converter shows a warning in the review step when the file is a user-profile export
+  (`src/lib/caveats.ts`).
 - Elements the older version doesn't know are **skipped with a log warning**, not converted — the
   marker rewrite does not transform content (that is the future "content-aware" phase). Seen on
   3.9.63 → 3.3.4: `CuePart.CuePartPresetTiming` (Sequence), `Slot.media` and

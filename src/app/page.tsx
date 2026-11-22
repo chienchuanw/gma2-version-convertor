@@ -10,6 +10,7 @@ import {
   type DetectResult,
   type Version,
 } from "@/lib/convert";
+import { downgradeCaveats } from "@/lib/caveats";
 import { decodeUtf8Strict, encodeUtf8, UnsupportedEncodingError } from "@/lib/encoding";
 import { createLatestGuard } from "@/lib/latest";
 import {
@@ -196,6 +197,11 @@ export default function Home() {
   const rows = useMemo(
     () => (file && target ? diffFields(file.text, target) : []),
     [file, target],
+  );
+
+  const caveats = useMemo(
+    () => (file && source && target ? downgradeCaveats(file.text, source, target) : []),
+    [file, source, target],
   );
 
   const isUpgrade = !!(source && target && compareVersions(target, source) > 0);
@@ -421,6 +427,11 @@ export default function Home() {
                       </span>
                     </div>
                     <DiffTable rows={rows} unreadable={file?.detect.unreadableVers ?? []} />
+                    {caveats.map((c) => (
+                      <Callout key={c.id} tone="warning" title="Check before importing">
+                        {c.message}
+                      </Callout>
+                    ))}
                     <RawTag before={result.before} after={result.after} />
                   </>
                 )}
