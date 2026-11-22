@@ -231,3 +231,28 @@ describe("detectVersion rawTag", () => {
     expect(r.sourceVersion).toBeNull();
   });
 });
+
+describe("detectVersion missingVers", () => {
+  const path = 'xsi:schemaLocation="http://schemas.malighting.de/grandma2/xml/3.9.60/MA.xsd"';
+
+  it("is empty when all three *_vers are present", () => {
+    expect(detectVersion(genuine3960).missingVers).toEqual([]);
+  });
+
+  it("lists the one missing field", () => {
+    const r = detectVersion(`<MA ${path} major_vers="3" minor_vers="9">`);
+    expect(r.missingVers).toEqual(["stream_vers"]);
+    expect(r.partial).toBe(true);
+  });
+
+  it("lists two missing fields in major/minor/stream order", () => {
+    const r = detectVersion(`<MA ${path} stream_vers="60">`);
+    expect(r.missingVers).toEqual(["major_vers", "minor_vers"]);
+  });
+
+  it("is empty when none are present (schema-only files are not partial)", () => {
+    const r = detectVersion(`<MA ${path}>`);
+    expect(r.missingVers).toEqual([]);
+    expect(r.partial).toBe(false);
+  });
+});

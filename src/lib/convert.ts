@@ -20,6 +20,11 @@ export interface DetectResult {
   mismatch: boolean;
   /** True when *_vers is partially present (1 or 2 of the three) — a hand-edited anomaly. */
   partial: boolean;
+  /**
+   * Which *_vers attributes are absent when `partial` (in major/minor/stream order);
+   * empty when all three or none are present.
+   */
+  missingVers: VersName[];
   /** The opening <MA ...> tag exactly as written, for showing the user what was found. */
   rawTag: string;
 }
@@ -56,6 +61,7 @@ export interface ConvertResult {
 const MA_OPEN_TAG_RE = /<MA\b[^>]*>/;
 const SCHEMA_PATH_RE = /xml\/(\d+)\.(\d+)\.(\d+)\/MA\.xsd/;
 const VERS_NAMES = ["major_vers", "minor_vers", "stream_vers"] as const;
+export type VersName = (typeof VERS_NAMES)[number];
 
 /** Match a single numeric version attribute, allowing single or double quotes. */
 function attrRe(name: string): RegExp {
@@ -108,13 +114,16 @@ export function detectVersion(xml: string): DetectResult {
     sourceVersion = attrVersion ?? schemaVersion;
   }
 
+  const partial = presentCount > 0 && presentCount < 3;
+
   return {
     attrVersion,
     schemaVersion,
     hasSchemaLocation: schemaVersion !== null,
     sourceVersion,
     mismatch,
-    partial: presentCount > 0 && presentCount < 3,
+    partial,
+    missingVers: partial ? VERS_NAMES.filter((_, i) => nums[i] === null) : [],
     rawTag: tag,
   };
 }
@@ -151,7 +160,7 @@ export function convert(xml: string, target: Version): ConvertResult {
   return { output, before, after, changed: output !== xml };
 }
 
-export type VersionField = "xsi:schemaLocation" | (typeof VERS_NAMES)[number];
+export type VersionField = "xsi:schemaLocation" | VersName;
 
 export interface FieldDiff {
   field: VersionField;
