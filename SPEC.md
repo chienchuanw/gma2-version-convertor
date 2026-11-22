@@ -67,8 +67,11 @@ schema. (Content-aware downgrade is a deliberate future phase "B".)
 - Target version: **dropdown of known releases (as complete as discoverable)** as primary,
   **custom major/minor/stream input** as fallback. Common targets surfaced first:
   `3.3.4`, `3.8.0`, `3.9.0`, `3.9.60` (exact triples pending research verification).
-- Before download: show a **"source version → target version" summary** plus the `<MA>` line
-  **before/after**.
+- Before download: show a **"source version → target version" summary**, a **per-field diff
+  table** (`schemaLocation` path + each `*_vers`, changed values highlighted, absent fields shown
+  as "not added"), and the raw `<MA>` line **before/after** behind a "Show raw tag" toggle.
+- Priority versions older than the source are offered as one-click **"Common targets"** chips
+  above the full dropdown.
 - Output filename gets a **target-version suffix** (`Name_3.3.4.xml`) — never overwrites the
   source.
 - **Single file** in V1; architecture leaves room for **batch** (UI-level loop + zip) later.
@@ -80,8 +83,8 @@ schema. (Content-aware downgrade is a deliberate future phase "B".)
 ### Error handling — "fail loud, never silently emit a possibly-broken file"
 - File has no `<MA>` tag / is not grandMA2 XML → clear error, no conversion.
 - `<MA>` found but version info partial (e.g. `schemaLocation` present but `*_vers` missing, or
-  vice versa) → rewrite what exists, fill in what's missing, warn that source version info was
-  incomplete.
+  vice versa) → rewrite only what exists (missing fields are **never injected** — see Core
+  conversion behaviour), and warn that source version info was incomplete.
 - Source version undeterminable (malformed marker) → error, and show the raw detected string so
   the user can judge.
 - Large files (multi-MB showfile fragments) → no size cap; show a processing state.

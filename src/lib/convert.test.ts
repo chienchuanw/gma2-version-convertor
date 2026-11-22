@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   convert,
   detectVersion,
+  diffFields,
   NotGma2XmlError,
   NoVersionInfoError,
 } from "./convert";
@@ -155,5 +156,48 @@ describe("robust *_vers handling", () => {
 
   it("a complete, normal file is not flagged partial", () => {
     expect(detectVersion(genuine3960).partial).toBe(false);
+  });
+});
+
+describe("diffFields", () => {
+  const t334 = { major: 3, minor: 3, stream: 4 };
+
+  it("lists the schema path and all three *_vers with before/after and a changed flag", () => {
+    expect(diffFields(genuine3960, t334)).toEqual([
+      { field: "xsi:schemaLocation", before: "3.9.60", after: "3.3.4", changed: true },
+      { field: "major_vers", before: "3", after: "3", changed: false },
+      { field: "minor_vers", before: "9", after: "3", changed: true },
+      { field: "stream_vers", before: "60", after: "4", changed: true },
+    ]);
+  });
+
+  it("reports absent fields as null before/after and unchanged (never injected)", () => {
+    const xml =
+      '<MA xsi:schemaLocation="http://schemas.malighting.de/grandma2/xml/3.9.60/MA.xsd" major_vers="3" minor_vers="9">';
+    const rows = diffFields(xml, t334);
+    expect(rows[3]).toEqual({ field: "stream_vers", before: null, after: null, changed: false });
+    expect(rows[2]).toEqual({ field: "minor_vers", before: "9", after: "3", changed: true });
+  });
+
+  it("reports a missing schemaLocation as null", () => {
+    const xml = '<MA major_vers="3" minor_vers="9" stream_vers="60">';
+    expect(diffFields(xml, t334)[0]).toEqual({
+      field: "xsi:schemaLocation",
+      before: null,
+      after: null,
+      changed: false,
+    });
+  });
+
+  it("uses each field's own value when path and attrs disagree", () => {
+    const xml =
+      '<MA xsi:schemaLocation="http://schemas.malighting.de/grandma2/xml/3.9.60/MA.xsd" major_vers="3" minor_vers="8" stream_vers="0">';
+    const rows = diffFields(xml, t334);
+    expect(rows.map((r) => r.before)).toEqual(["3.9.60", "3", "8", "0"]);
+    expect(rows.map((r) => r.changed)).toEqual([true, false, true, true]);
+  });
+
+  it("throws NotGma2XmlError without an <MA> tag", () => {
+    expect(() => diffFields("<root/>", t334)).toThrow(NotGma2XmlError);
   });
 });
