@@ -10,6 +10,7 @@ import {
   type DetectResult,
   type Version,
 } from "@/lib/convert";
+import { decodeUtf8Strict, encodeUtf8, UnsupportedEncodingError } from "@/lib/encoding";
 import { createLatestGuard } from "@/lib/latest";
 import {
   CATALOG,
@@ -48,14 +49,14 @@ interface LoadError {
 const RAW_MAX = 600;
 const truncate = (s: string) => (s.length > RAW_MAX ? `${s.slice(0, RAW_MAX)}…` : s);
 
-/** Read a file preserving a leading UTF-8 BOM (TextDecoder ignoreBOM keeps it). */
-async function readFilePreservingBom(file: File): Promise<string> {
-  const buf = await file.arrayBuffer();
-  return new TextDecoder("utf-8", { ignoreBOM: true }).decode(buf);
+/** Read a file as strict UTF-8, keeping a leading BOM (throws UnsupportedEncodingError). */
+async function readUtf8File(file: File): Promise<string> {
+  return decodeUtf8Strict(new Uint8Array(await file.arrayBuffer()));
 }
 
 function download(filename: string, text: string) {
-  const blob = new Blob([text], { type: "application/xml;charset=utf-8" });
+  // encodeUtf8 is the exact inverse of decodeUtf8Strict, so unchanged bytes stay unchanged.
+  const blob = new Blob([encodeUtf8(text)], { type: "application/xml;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -112,7 +113,7 @@ export default function Home() {
     }
     setLoading(f.name);
     try {
-      const text = await readFilePreservingBom(f);
+      const text = await readUtf8File(f);
       if (!isCurrent()) return;
       const detect = detectVersion(text); // throws NotGma2XmlError
       if (detect.sourceVersion === null) {
@@ -126,7 +127,9 @@ export default function Home() {
       setFile({ name: f.name, text, detect });
     } catch (e) {
       if (!isCurrent()) return;
-      if (e instanceof NotGma2XmlError) {
+      if (e instanceof UnsupportedEncodingError) {
+        setError({ title: "Unsupported text encoding", body: `${f.name}: ${e.message}` });
+      } else if (e instanceof NotGma2XmlError) {
         setError({
           title: "Not a grandMA2 file",
           body: `${f.name} has no <MA> root tag. Choose an XML file exported from grandMA2 or grandMA2 onPC.`,
