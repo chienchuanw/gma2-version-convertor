@@ -56,6 +56,18 @@ describe("decodeUtf8Strict", () => {
     expectReject(new Uint8Array([0x00, 0x3c, 0x00, 0x3f, 0x00, 0x78]), /UTF-16/);
   });
 
+  it("rejects UTF-16/32 without a BOM that doesn't start with '<?' (NUL bytes)", () => {
+    const utf16le = new Uint8Array([...enc.encode("<MA/>")].flatMap((c) => [c, 0]));
+    const utf32be = new Uint8Array([...enc.encode("<MA/>")].flatMap((c) => [0, 0, 0, c]));
+    expectReject(utf16le, /NUL bytes/);
+    expectReject(utf32be, /NUL bytes/);
+  });
+
+  it("ignores encoding= inside a later <?xml-stylesheet?> instruction", () => {
+    const xml = `<?xml-stylesheet type="text/xsl" encoding="x"?><MA major_vers="3"/>`;
+    expect(() => decodeUtf8Strict(bytes(xml))).not.toThrow();
+  });
+
   it("rejects a declaration that names another encoding, even when the bytes are ASCII", () => {
     expectReject(bytes(`<?xml version="1.0" encoding="ISO-8859-1"?><MA/>`), /ISO-8859-1/);
     expectReject(bytes(`<?xml version="1.0" encoding='windows-1252'?><MA/>`), /windows-1252/);
