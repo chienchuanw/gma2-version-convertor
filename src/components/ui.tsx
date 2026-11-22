@@ -288,7 +288,14 @@ export function FileChip({
 
 /* ---------- Review ---------- */
 
-export function DiffTable({ rows }: { rows: FieldDiff[] }) {
+export function DiffTable({
+  rows,
+  unreadable = [],
+}: {
+  rows: FieldDiff[];
+  /** Fields present in the tag but not numeric — shown as left unchanged, not "not added". */
+  unreadable?: string[];
+}) {
   return (
     <div className="overflow-hidden rounded-lg border border-line">
       <table className="w-full table-fixed border-collapse text-left">
@@ -321,7 +328,9 @@ export function DiffTable({ rows }: { rows: FieldDiff[] }) {
               </td>
               <td className="px-2 py-2.5">
                 {r.after === null ? (
-                  <span className="text-fg-subtle">— (not added)</span>
+                  <span className="text-fg-subtle">
+                    {unreadable.includes(r.field) ? "— (unreadable, left as is)" : "— (not added)"}
+                  </span>
                 ) : r.changed ? (
                   <span className="rounded bg-accent-highlight px-2 py-0.5 text-sm font-medium text-accent-strong">
                     {r.after}
