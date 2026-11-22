@@ -46,7 +46,7 @@ export function FileList({
               `${entries.length - skipped} convertible`,
               warned > 0 && `${warned} with warnings`,
               skipped > 0 && `${skipped} skipped`,
-              ignored > 0 && `${ignored} non-XML file${ignored === 1 ? "" : "s"} ignored`,
+              ignored > 0 && `${ignored} other file${ignored === 1 ? "" : "s"} ignored`,
             ]
               .filter(Boolean)
               .join(" · ")}
@@ -61,8 +61,8 @@ export function FileList({
         </button>
       </div>
       <ul className="max-h-[280px] divide-y divide-line overflow-y-auto border-t border-accent-border">
-        {entries.map((e) => (
-          <li key={e.path} className="px-4 py-2">
+        {entries.map((e, i) => (
+          <li key={`${i}:${e.path}`} className="px-4 py-2">
             <div className="flex items-center gap-3">
               <span className="min-w-0 flex-1 truncate font-mono text-[12.5px] leading-5" title={e.path}>
                 {e.path}

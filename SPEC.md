@@ -79,7 +79,7 @@ schema. (Content-aware downgrade is a deliberate future phase "B".)
 - **Batch**: several files or a whole folder (picked with "Choose a folder" or dropped; read
   recursively, only `*.xml` kept, macOS `._*` files ignored) are converted to one target and
   downloaded as **one zip** that keeps the relative folder structure and original file names
-  (`<folder>_<target>.zip`). Each file gets a status (ok / warning: mismatch or partial / skipped:
+  (`<folder>_<target>.zip`, or `grandMA2-xml_<target>.zip` for loose files). Each file gets a status (ok / warning: mismatch or partial / skipped:
   not grandMA2, no version info, or unsupported encoding); skipped files are listed and never put
   in the zip. The batch source is the **highest** detected version, so the target list offers
   versions older than it; files already at or below the target are copied unchanged. Pure logic

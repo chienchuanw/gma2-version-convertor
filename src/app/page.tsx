@@ -169,7 +169,10 @@ export default function Home() {
   /** Several files or a folder → batch mode. A single picked file keeps the single-file flow. */
   const loadPicked = useCallback(
     async (picked: Picked[], folder: boolean) => {
-      if (picked.length === 0) return;
+      if (picked.length === 0) {
+        setLoading(null);
+        return;
+      }
       if (picked.length === 1 && !folder) return loadFile(picked[0].file);
       const isCurrent = guard.start();
       setError(null);
@@ -228,7 +231,26 @@ export default function Home() {
       e.preventDefault();
       setDragging(false);
       if (!e.dataTransfer) return;
-      void collectDropped(e.dataTransfer).then(({ picked, folder }) => loadPicked(picked, folder));
+      // Walking a dropped folder can take a while: claim "latest pick" now and show progress,
+      // so a file picked during the walk wins and the old walk's result is dropped.
+      const isCurrent = guard.start();
+      setError(null);
+      setFile(null);
+      setBatch(null);
+      setChoice("");
+      setLoading("dropped items");
+      collectDropped(e.dataTransfer)
+        .then(({ picked, folder }) => {
+          if (isCurrent()) return loadPicked(picked, folder);
+        })
+        .catch(() => {
+          if (!isCurrent()) return;
+          setLoading(null);
+          setError({
+            title: "Couldn’t read the dropped folder",
+            body: "Some files or folders couldn’t be read (they may have been moved or need permission). Try again, or use “Choose a folder”.",
+          });
+        });
     };
     window.addEventListener("dragover", onDragOver);
     window.addEventListener("drop", onDrop);
@@ -236,7 +258,7 @@ export default function Home() {
       window.removeEventListener("dragover", onDragOver);
       window.removeEventListener("drop", onDrop);
     };
-  }, [loadPicked]);
+  }, [guard, loadPicked]);
 
   const batchSource = useMemo(() => (batch ? batchSourceVersion(batch.entries) : null), [batch]);
   const source = file?.detect.sourceVersion ?? batchSource;
