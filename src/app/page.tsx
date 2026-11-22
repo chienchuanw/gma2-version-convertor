@@ -68,6 +68,24 @@ function download(filename: string, text: string) {
 
 const CUSTOM = "__custom__";
 
+/** Warning text for missing and/or non-numeric *_vers attributes (one string, so JSX keeps spaces). */
+function versAttrWarning(d: DetectResult): string {
+  const list = (names: string[]) => names.join(" and ");
+  const parts: string[] = [];
+  if (d.missingVers.length > 0) {
+    parts.push(
+      `${list(d.missingVers)} ${d.missingVers.length === 1 ? "is" : "are"} missing from the <MA> tag.`,
+    );
+  }
+  if (d.unreadableVers.length > 0) {
+    parts.push(
+      `${list(d.unreadableVers)} ${d.unreadableVers.length === 1 ? "has a value that isn’t" : "have values that aren’t"} a whole number.`,
+    );
+  }
+  parts.push("Conversion rewrites only the readable fields and never adds or changes the others.");
+  return parts.join(" ");
+}
+
 export default function Home() {
   const [file, setFile] = useState<LoadedFile | null>(null);
   const [error, setError] = useState<LoadError | null>(null);
@@ -286,11 +304,9 @@ export default function Home() {
                 source, and conversion sets both to the same target.
               </Callout>
             )}
-            {file?.detect.partial && (
+            {file && (file.detect.partial || file.detect.unreadableVers.length > 0) && (
               <Callout tone="warning" title="Version attributes incomplete">
-                {`${file.detect.missingVers.join(" and ")} ${
-                  file.detect.missingVers.length === 1 ? "is" : "are"
-                } missing from the <MA> tag. Conversion rewrites the fields that exist and never adds new ones.`}
+                {versAttrWarning(file.detect)}
               </Callout>
             )}
           </StepCard>
@@ -401,7 +417,7 @@ export default function Home() {
                         {rows.filter((r) => r.before !== null).length} fields change
                       </span>
                     </div>
-                    <DiffTable rows={rows} />
+                    <DiffTable rows={rows} unreadable={file?.detect.unreadableVers ?? []} />
                     <RawTag before={result.before} after={result.after} />
                   </>
                 )}
