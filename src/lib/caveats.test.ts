@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { downgradeCaveats, firstContentElement } from "./caveats";
 
 const MA = `<MA xmlns="http://schemas.malighting.de/grandma2/xml/MA" major_vers="3" minor_vers="9" stream_vers="63">`;
-const file = (body: string, bom = "﻿") =>
+const file = (body: string, bom = "\uFEFF") =>
   `${bom}<?xml version="1.0" encoding="utf-8"?>\n${MA}\n\t<Info datetime="2026-11-22T23:34:01" showfile="demo" />\n${body}\n</MA>\n`;
 
 const v = (major: number, minor: number, stream: number) => ({ major, minor, stream });
