@@ -24,10 +24,11 @@ verified across ~150 real exports). They only disagree in hand-authored plugin d
 self-test files where someone hardcoded a stray header — a mismatch is a reliable signal the file
 is *not* a clean console export. (Details + the full version table: `docs/grandma2-versions.md`.)
 
-A higher-version console can load a lower-version file, but not vice versa. The gate is a version
-value in the header (editing it makes a refused file load); when moving between builds of the same
-`major.minor` line, `stream_vers` is the only differing attribute, so it is the de-facto gate.
-Writing all parts consistently covers it regardless. The real-world need is *downgrading*:
+A higher-version console can load a lower-version file, but not vice versa. **The gate is the
+`*_vers` attributes** — verified on real onPC 3.3.4.1 / 3.7.0.5 / 3.9.0.3 / 3.9.60.50: rewriting
+only `*_vers` makes a refused file import, rewriting only the schema path does not, and within one
+`major.minor` line `stream_vers` alone decides. Writing all parts consistently keeps the output
+identical to a native export. The real-world need is *downgrading*:
 new file → old console.
 
 ## V1 Scope — "naive marker rewrite"
@@ -38,11 +39,11 @@ schema. (Content-aware downgrade is a deliberate future phase "B".)
 ### Core conversion behaviour
 - Rewrite, on the `<MA>` tag: the `schemaLocation` path version **and** all three `*_vers`
   attributes, **all set to the same target version triple** — making the file look exactly like
-  a native export from the target console. (`stream_vers` is the de-facto gate, but writing all
-  parts consistently is the safest, most native-looking result.)
+  a native export from the target console. (`*_vers` is the verified gate; writing all parts
+  consistently is the most native-looking result.)
 - Each version field is rewritten **in place**: `*_vers` attributes are matched individually
   (order-independent, single- or double-quoted) so a reordered file can never silently leave the
-  `stream_vers` gate un-lowered. Only fields that are **present** are rewritten; missing fields are
+  `*_vers` gate un-lowered. Only fields that are **present** are rewritten; missing fields are
   **never injected** (stay faithful — a genuine export without `schemaLocation` is valid).
 - If the source has **partial `*_vers`** (1–2 of the three) it is flagged and the user is warned;
   the present fields are still rewritten. If `schemaLocation` and `*_vers` **disagree** (non-genuine
@@ -61,12 +62,13 @@ schema. (Content-aware downgrade is a deliberate future phase "B".)
   dependency) so it is unit-testable and reusable (future MCP server / VS Code extension).
 
 ### Input / output
-- Input: **drag-and-drop + click-to-pick**. V1 accepts **`.xml` only** (future: `.show.gz`,
-  which is gzipped XML — the string-in/string-out core makes adding a decompress/recompress
-  layer straightforward).
+- Input: **drag-and-drop + click-to-pick**. Accepts **`.xml` only**. A `.show.gz` is gzip around
+  MA's proprietary **binary** show format (magic `MA DATA`, no `<MA>` tag — verified, see
+  `docs/grandma2-versions.md`), so it cannot be downgraded by a marker rewrite. Whole shows go
+  through the XML export workflow instead (export to XML → convert → import on the older version).
 - Target version: **dropdown of known releases (as complete as discoverable)** as primary,
   **custom major/minor/stream input** as fallback. Common targets surfaced first:
-  `3.3.4`, `3.8.0`, `3.9.0`, `3.9.60` (exact triples pending research verification).
+  `3.3.4`, `3.8.0`, `3.9.0`, `3.9.60`.
 - Before download: show a **"source version → target version" summary**, a **per-field diff
   table** (`schemaLocation` path + each `*_vers`, changed values highlighted, absent fields shown
   as "not added"), and the raw `<MA>` line **before/after** behind a "Show raw tag" toggle.
@@ -99,12 +101,18 @@ schema. (Content-aware downgrade is a deliberate future phase "B".)
 ## Future (out of V1 scope)
 - **B: content-aware downgrade** — understand per-version schema differences and strip/transform
   elements an older version cannot handle, so the file genuinely loads clean.
-- `.show.gz` support (decompress → rewrite → recompress).
 - Batch / multi-file conversion with zip download.
 - i18n (zh-TW), arbitrary-direction conversion if a use case emerges.
 
 ## Version table — DONE
 Compiled in `docs/grandma2-versions.md`: distinct header triples for the dropdown (2.5.3 → 3.9.63),
 field semantics, gate analysis, and the four priority versions verified
-(3.3.4 = 3/3/4, 3.8.0 = 3/8/0, 3.9.0 = 3/9/0, 3.9.60 = 3/9/60, all HIGH confidence). Custom-triple
-input remains the escape hatch for beta/interim builds with raw stream counters.
+(3.3.4 = 3/3/4, 3.8.0 = 3/8/0, 3.9.0 = 3/9/0, 3.9.60 = 3/9/60, all HIGH confidence); 3.9.63 = 3/9/63
+verified from a real 3.9.63.11 export. 2.6.0 / 2.7.0 / 2.9.1 remain inferred (no 2.x software to
+test). Custom-triple input remains the escape hatch for beta/interim builds with raw stream counters.
+
+## Verified on real software
+End-to-end import tests on onPC 3.3.4.1, 3.7.0.5, 3.9.0.3 and 3.9.60.50 (2026-11-22) are recorded in
+`docs/grandma2-versions.md` → "Verified end-to-end on grandMA2 onPC", including the two content
+caveats a marker rewrite cannot fix: newer-only elements are skipped on import, and newer
+`UserProfiles` can crash a much older onPC.
