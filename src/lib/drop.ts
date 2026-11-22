@@ -22,10 +22,11 @@ export function collectDropped(dt: DataTransfer): Promise<{ picked: Picked[]; fo
   const entries = [...dt.items]
     .filter((i) => i.kind === "file")
     .map((i) => i.webkitGetAsEntry?.() ?? null);
-  if (entries.length === 0 || entries.some((e) => e === null) || !entries.some((e) => e!.isDirectory)) {
-    return Promise.resolve({ picked: files, folder: false });
-  }
-  return walkEntries(entries as FileSystemEntry[]).then((picked) => ({ picked, folder: true }));
+  if (!entries.some((e) => e?.isDirectory)) return Promise.resolve({ picked: files, folder: false });
+  // Walk what has an entry; keep the plain File for any item without one (same index).
+  const loose = entries.flatMap((e, i) => (e === null && files[i] ? [files[i]] : []));
+  const walkable = entries.filter((e): e is FileSystemEntry => e !== null);
+  return walkEntries(walkable).then((picked) => ({ picked: [...picked, ...loose], folder: true }));
 }
 
 export async function walkEntries(entries: FileSystemEntry[]): Promise<Picked[]> {

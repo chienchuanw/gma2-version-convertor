@@ -71,10 +71,17 @@ function versionNote(d: DetectResult): string | undefined {
 
 /** Detect each file's version and decide whether it can be converted. Sorted by path. */
 export function analyzeBatch(inputs: BatchInput[]): BatchEntry[] {
+  // Zip paths must be unique (case-insensitively, for Windows/macOS file systems).
+  const seen = new Set<string>();
   return [...inputs]
     .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
     .map((input): BatchEntry => {
       const { path, text } = input;
+      const key = path.toLowerCase();
+      if (seen.has(key)) {
+        return { path, status: "skipped", note: "Duplicate path: another file in this batch has the same path." };
+      }
+      seen.add(key);
       if (input.error !== undefined || text === undefined) {
         return { path, status: "skipped", note: input.error ?? "Couldn’t read this file." };
       }
@@ -107,7 +114,8 @@ export function batchSourceVersion(entries: BatchEntry[]): Version | null {
 
 /**
  * Convert every convertible file to `target`. Files already at or below the target are kept
- * unchanged (they load as they are), so the output stays a complete copy of the folder.
+ * unchanged (they load as they are), so every grandMA2 file of the folder ends up in the output;
+ * skipped files are returned separately.
  */
 export function convertBatch(entries: BatchEntry[], target: Version): BatchResult {
   const files: BatchOutputFile[] = [];
@@ -154,5 +162,6 @@ export function buildZip(files: { path: string; text: string }[], prefix = ""): 
     const path = prefix && f.path.startsWith(prefix) ? f.path.slice(prefix.length) : f.path;
     entries[path] = encodeUtf8(f.text);
   }
-  return zipSync(entries, { level: 6 }) as Uint8Array<ArrayBuffer>;
+  // Level 1: still shrinks XML several-fold but is fast enough not to freeze the page on big exports.
+  return zipSync(entries, { level: 1 }) as Uint8Array<ArrayBuffer>;
 }

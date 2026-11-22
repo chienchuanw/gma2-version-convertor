@@ -85,6 +85,13 @@ describe("collectDropped", () => {
     expect(r.picked).toHaveLength(5);
   });
 
+  it("keeps a loose file without an entry next to a walked folder", async () => {
+    const r = await collectDropped(dt([SHOW, null], ["show", "extra.xml"]));
+    expect(r.folder).toBe(true);
+    expect(r.picked.map((p) => p.path)).toContain("extra.xml");
+    expect(r.picked).toHaveLength(6);
+  });
+
   it("falls back to dataTransfer.files when entries aren't available", async () => {
     const r = await collectDropped(dt([null], ["a.xml"]));
     expect(r).toMatchObject({ folder: false, picked: [{ path: "a.xml" }] });

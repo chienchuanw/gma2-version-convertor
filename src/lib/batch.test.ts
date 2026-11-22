@@ -58,6 +58,17 @@ describe("analyzeBatch", () => {
   });
 });
 
+describe("analyzeBatch duplicates", () => {
+  it("skips a second file with the same path (case-insensitively)", () => {
+    const entries = analyzeBatch([
+      { path: "a/importexport/M.xml", text: ma("3.9.60") },
+      { path: "a/importexport/m.xml", text: ma("3.9.63") },
+    ]);
+    expect(entries.map((e) => e.status)).toEqual(["ok", "skipped"]);
+    expect(entries[1].note).toMatch(/Duplicate path/);
+  });
+});
+
 describe("batchSourceVersion", () => {
   it("is the highest version among convertible files", () => {
     expect(batchSourceVersion(analyzeBatch(MIXED))).toEqual(v(3, 9, 63));
