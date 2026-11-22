@@ -134,6 +134,22 @@ effects 34, plus image pool, layouts, presets, executor pages, timecodes and use
 
 Not tested: a 3.8.0 target (no onPC 3.8 on the test machine) and any 2.x target.
 
+## Text encoding of real exports
+
+Checked 2026-11-22 on genuine exports from onPC 3.3.4.1, 3.7.0.5, 3.9.0.3, 3.9.60.50 and 3.9.63.11
+(~110 files: `importexport/`, `macros/`, `fixture_layers/`, `library/`):
+
+| Property | What grandMA2 writes |
+|---|---|
+| Encoding | **UTF-8, always** — declaration `<?xml version="1.0" encoding="utf-8"?>` in every file |
+| BOM | Console exports (`Export …`) start with a UTF-8 BOM; some generated/plugin-written files have none |
+| Line endings | LF for console exports; CRLF appears in user/plugin-made macro files |
+
+onPC also **refused a UTF-16 LE copy** of a file it imports fine as UTF-8 (3.9.60.50), so a
+non-UTF-8 grandMA2 XML is never an original export. The converter therefore decodes input as
+strict UTF-8 (`src/lib/encoding.ts`) and rejects UTF-16/32, any other declared encoding, and
+invalid UTF-8 bytes with a clear error, instead of re-encoding them.
+
 ## `.show.gz` is a binary format, not XML
 
 Checked on three real files (onPC 3.9.63.11 save, onPC 3.9.60.50 save, the 3.3.4 "rpu demo show"):

@@ -89,6 +89,10 @@ schema. (Content-aware downgrade is a deliberate future phase "B".)
   conversion behaviour), and warn that source version info was incomplete.
 - Source version undeterminable (malformed marker) → error, and show the raw detected string so
   the user can judge.
+- Input is not UTF-8 (UTF-16/32 BOM, a declaration naming another encoding, or invalid UTF-8
+  bytes) → "Unsupported text encoding" error, no conversion. grandMA2 only writes UTF-8 (verified
+  across five onPC versions), and accepted input is decoded/encoded so that every byte outside the
+  `<MA>` tag round-trips exactly.
 - Large files (multi-MB showfile fragments) → no size cap; show a processing state.
 
 ### Quality

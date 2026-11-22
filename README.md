@@ -16,7 +16,8 @@ other origin — you can verify it in your browser's DevTools.
 - Rewrites the `<MA>` tag's `xsi:schemaLocation` path **and** `major_vers`/`minor_vers`/`stream_vers`
   to a target version you select — making the file look like a native export from that console.
 - **Precise string replacement only**: every other byte (indentation, CRLF/LF, BOM, encoding,
-  attribute order, comments) is preserved.
+  attribute order, comments) is preserved. Input must be UTF-8, which is what grandMA2 writes;
+  anything else is rejected with a clear error rather than silently re-encoded.
 - **Downgrade only.** The source version is auto-detected; you can only target older versions.
 - Pick a target from the known-release dropdown, or enter a custom `major.minor.stream` triple.
 - Shows a source → target summary with the `<MA>` line before/after, then downloads the result with
