@@ -5,6 +5,7 @@ import {
   compareVersions,
   convert,
   detectVersion,
+  diffFields,
   NoVersionInfoError,
   NotGma2XmlError,
   type DetectResult,
@@ -12,15 +13,34 @@ import {
 } from "@/lib/convert";
 import {
   CATALOG,
+  commonTargets,
   downgradeTargets,
   versionString,
   withVersionSuffix,
 } from "@/lib/versions";
+import {
+  Callout,
+  DiffTable,
+  FieldLabel,
+  FileChip,
+  Footer,
+  Header,
+  Icon,
+  RawTag,
+  StepCard,
+  VersionChip,
+  type StepState,
+} from "@/components/ui";
 
 interface LoadedFile {
   name: string;
   text: string;
   detect: DetectResult;
+}
+
+interface LoadError {
+  title: string;
+  body: string;
 }
 
 /** Read a file preserving a leading UTF-8 BOM (TextDecoder ignoreBOM keeps it). */
@@ -45,7 +65,7 @@ const CUSTOM = "__custom__";
 
 export default function Home() {
   const [file, setFile] = useState<LoadedFile | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<LoadError | null>(null);
   const [dragging, setDragging] = useState(false);
   const [choice, setChoice] = useState<string>(""); // catalog label or CUSTOM
   const [custom, setCustom] = useState({ major: "", minor: "", stream: "" });
@@ -56,7 +76,10 @@ export default function Home() {
     setFile(null);
     setChoice("");
     if (!f.name.toLowerCase().endsWith(".xml")) {
-      setError(`"${f.name}" is not an .xml file. V1 accepts grandMA2 .xml files only.`);
+      setError({
+        title: "Not an .xml file",
+        body: `${f.name} isn’t an .xml file. Only grandMA2 .xml exports are supported for now.`,
+      });
       return;
     }
     try {
@@ -65,10 +88,18 @@ export default function Home() {
       if (detect.sourceVersion === null) throw new NoVersionInfoError();
       setFile({ name: f.name, text, detect });
     } catch (e) {
-      if (e instanceof NotGma2XmlError || e instanceof NoVersionInfoError) {
-        setError(e.message);
+      if (e instanceof NotGma2XmlError) {
+        setError({
+          title: "Not a grandMA2 file",
+          body: `${f.name} has no <MA> root tag. Choose an XML file exported from grandMA2 or grandMA2 onPC.`,
+        });
+      } else if (e instanceof NoVersionInfoError) {
+        setError({
+          title: "No version information",
+          body: `The <MA> tag in ${f.name} has no schemaLocation path and no *_vers attributes, so there is nothing to convert.`,
+        });
       } else {
-        setError("Could not read this file.");
+        setError({ title: "Couldn’t read this file", body: `${f.name} could not be read.` });
       }
     }
   }, []);
@@ -85,6 +116,7 @@ export default function Home() {
 
   const source = file?.detect.sourceVersion ?? null;
   const targets = useMemo(() => (source ? downgradeTargets(source) : []), [source]);
+  const common = useMemo(() => (source ? commonTargets(source) : []), [source]);
 
   const target: Version | null = useMemo(() => {
     if (choice === CUSTOM) {
@@ -114,45 +146,43 @@ export default function Home() {
     }
   }, [file, target]);
 
+  const rows = useMemo(
+    () => (file && target ? diffFields(file.text, target) : []),
+    [file, target],
+  );
+
   const isUpgrade = !!(source && target && compareVersions(target, source) > 0);
   const canDownload = !!(result && result.changed && !isUpgrade);
+  const noTargets = !!file && targets.length === 0;
+
+  const step2: StepState = !file ? "locked" : target ? "done" : "active";
+  const step3: StepState = !file || !target ? "locked" : "active";
+  const step3Hint = noTargets && choice !== CUSTOM ? "No conversion needed" : undefined;
+
+  const pick = () => inputRef.current?.click();
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-12">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          grandMA2 Version Convertor
-        </h1>
-        <p className="text-sm text-foreground/70">
-          Downgrade a grandMA2 XML file&rsquo;s version marker so an older console can load
-          it. Everything runs in your browser &mdash; your file never leaves this page.
-        </p>
-      </header>
+    <div className="flex min-h-full flex-1 flex-col">
+      <Header />
 
-      {/* Dropzone */}
-      <section>
-        <div
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragging(true);
-          }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={onDrop}
-          onClick={() => inputRef.current?.click()}
-          className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-12 text-center transition ${
-            dragging
-              ? "border-foreground/60 bg-foreground/5"
-              : "border-foreground/20 hover:border-foreground/40"
-          }`}
-        >
-          <p className="text-sm font-medium">
-            Drop a grandMA2 <code className="font-mono">.xml</code> file here
-          </p>
-          <p className="text-xs text-foreground/50">or click to choose a file</p>
+      <main className="flex-1 px-4 pt-14 pb-[72px]">
+        <div className="mx-auto flex w-full max-w-[640px] flex-col gap-4">
+          <div className="space-y-2 pb-4">
+            <h1 className="text-[30px] leading-[38px] font-semibold tracking-tight">
+              Downgrade grandMA2 files
+              <br />
+              for older consoles.
+            </h1>
+            <p className="text-sm leading-[22px] text-fg-muted">
+              Rewrites the version marker so an older grandMA2 or onPC can load a file saved by
+              a newer one. Your file never leaves this page.
+            </p>
+          </div>
+
           <input
             ref={inputRef}
             type="file"
-            accept=".xml,text/xml,application/xml"
+            accept=".xml,application/xml,text/xml"
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
@@ -160,171 +190,192 @@ export default function Home() {
               e.target.value = "";
             }}
           />
-        </div>
-        {file && (
-          <p className="mt-2 text-xs text-foreground/60">
-            Loaded: <span className="font-mono">{file.name}</span>
-          </p>
-        )}
-      </section>
 
-      {error && (
-        <p
-          role="alert"
-          className="rounded-lg border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300"
-        >
-          {error}
-        </p>
-      )}
+          {/* Step 1 — upload */}
+          <StepCard n={1} title="Upload file" state={file ? "done" : "active"}>
+            {file && source ? (
+              <FileChip
+                name={file.name}
+                meta={`Detected grandMA2 ${versionString(source)}`}
+                onReplace={pick}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={pick}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragging(true);
+                }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={onDrop}
+                className={`flex h-[168px] w-full flex-col items-center justify-center gap-2 rounded-xl border-[1.5px] border-dashed transition ${
+                  dragging
+                    ? "border-accent bg-accent-soft"
+                    : "border-line-strong bg-surface hover:border-accent"
+                }`}
+              >
+                <span className="flex size-10 items-center justify-center rounded-full bg-accent-soft text-accent-strong">
+                  {Icon.upload(18)}
+                </span>
+                <span className="text-sm font-medium">
+                  Drop a grandMA2 <code className="font-mono">.xml</code> file here
+                </span>
+                <span className="text-xs text-fg-muted">or click to browse</span>
+              </button>
+            )}
 
-      {file && source && (
-        <section className="space-y-6">
-          {/* Detected source */}
-          <div className="rounded-lg border border-foreground/15 px-4 py-3 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-foreground/60">Detected version</span>
-              <span className="font-mono font-medium">{versionString(source)}</span>
+            {error && (
+              <Callout tone="error" title={error.title}>
+                {error.body}
+              </Callout>
+            )}
+            {file?.detect.mismatch && file.detect.schemaVersion && file.detect.attrVersion && (
+              <Callout tone="warning" title="Version fields disagree">
+                The schemaLocation path says {versionString(file.detect.schemaVersion)} but the
+                version attributes say {versionString(file.detect.attrVersion)}, so this file was
+                likely hand-edited. The higher version ({versionString(source!)}) is used as the
+                source, and conversion sets both to the same target.
+              </Callout>
+            )}
+            {file?.detect.partial && (
+              <Callout tone="warning" title="Version attributes incomplete">
+                Not all of major_vers / minor_vers / stream_vers are present in the &lt;MA&gt;
+                tag. Conversion rewrites the fields that exist and never adds new ones.
+              </Callout>
+            )}
+          </StepCard>
+
+          {/* Step 2 — target */}
+          <StepCard
+            n={2}
+            title="Choose target version"
+            state={step2}
+            hint={!file ? "Upload a file first" : undefined}
+          >
+            {noTargets && choice !== CUSTOM && source && (
+              <Callout tone="info" title="Already the oldest known version">
+                {versionString(source)} is the oldest release in our list, so there is nothing
+                older to pick. If you need an unlisted build, choose “Custom version…”.
+              </Callout>
+            )}
+
+            {common.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-fg-muted">Common targets</p>
+                <div className="flex flex-wrap gap-2">
+                  {common.map((c) => (
+                    <VersionChip
+                      key={c.label}
+                      label={c.label}
+                      selected={choice === c.label}
+                      onClick={() => setChoice(c.label)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <FieldLabel htmlFor="target">All versions</FieldLabel>
+              <div className="relative">
+                <select
+                  id="target"
+                  value={choice}
+                  onChange={(e) => setChoice(e.target.value)}
+                  className="h-10 w-full appearance-none rounded-lg border border-line-strong bg-page pr-9 pl-3 text-sm focus:border-accent focus:outline-none"
+                >
+                  <option value="">Select a target version…</option>
+                  {targets.map((t) => (
+                    <option key={t.label} value={t.label}>
+                      {t.label}
+                      {t.priority ? "  ★" : ""}
+                      {t.year ? `  (${t.year})` : ""}
+                      {t.confidence === "inferred" ? "  — inferred" : ""}
+                    </option>
+                  ))}
+                  <option value={CUSTOM}>Custom version…</option>
+                </select>
+                <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-fg-muted">
+                  {Icon.chevron()}
+                </span>
+              </div>
             </div>
-            {file.detect.mismatch && (
-              <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
-                Note: the schemaLocation path and the version attributes disagree
-                (path&nbsp;
-                {file.detect.schemaVersion && versionString(file.detect.schemaVersion)},
-                attrs&nbsp;
-                {file.detect.attrVersion && versionString(file.detect.attrVersion)}). This
-                file was likely hand-edited; conversion will set both consistently.
-              </p>
-            )}
-            {file.detect.partial && (
-              <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
-                Note: this file&rsquo;s version attributes are incomplete (not all of
-                major/minor/stream are present). Conversion rewrites the fields that exist
-                without adding new ones.
-              </p>
-            )}
-          </div>
-
-          {/* Target selector */}
-          <div className="space-y-3">
-            <label className="block text-sm font-medium" htmlFor="target">
-              Convert down to
-            </label>
-            {targets.length === 0 && choice !== CUSTOM ? (
-              <p className="text-sm text-foreground/60">
-                This is already the oldest version in our list. You can still enter a
-                custom version below.
-              </p>
-            ) : null}
-            <select
-              id="target"
-              value={choice}
-              onChange={(e) => setChoice(e.target.value)}
-              className="w-full rounded-lg border border-foreground/20 bg-transparent px-3 py-2 text-sm"
-            >
-              <option value="">Select a target version&hellip;</option>
-              {targets.map((t) => (
-                <option key={t.label} value={t.label}>
-                  {t.label}
-                  {t.priority ? "  ★" : ""}
-                  {t.year ? `  (${t.year})` : ""}
-                  {t.confidence === "inferred" ? "  — inferred" : ""}
-                </option>
-              ))}
-              <option value={CUSTOM}>Custom version&hellip;</option>
-            </select>
 
             {choice === CUSTOM && (
-              <div className="flex items-end gap-2">
+              <div className="flex flex-wrap items-end gap-3">
                 {(["major", "minor", "stream"] as const).map((k) => (
-                  <label
-                    key={k}
-                    className="flex flex-col gap-1 text-xs text-foreground/60"
-                  >
+                  <label key={k} className="flex flex-col gap-1 text-xs text-fg-muted">
                     {k}
                     <input
                       type="number"
                       min={0}
                       value={custom[k]}
-                      onChange={(e) =>
-                        setCustom((c) => ({ ...c, [k]: e.target.value }))
-                      }
-                      className="w-24 rounded-lg border border-foreground/20 bg-transparent px-2 py-1.5 font-mono text-sm text-foreground"
+                      onChange={(e) => setCustom((c) => ({ ...c, [k]: e.target.value }))}
+                      className="h-9 w-24 rounded-lg border border-line-strong bg-page px-3 font-mono text-sm font-medium text-fg focus:border-accent focus:outline-none"
                     />
                   </label>
                 ))}
+                <span className="pb-2 text-xs text-fg-subtle">
+                  Use for beta or unlisted builds.
+                </span>
               </div>
             )}
-          </div>
+          </StepCard>
 
-          {/* Summary + before/after */}
-          {target && (
-            <div className="space-y-3">
-              {isUpgrade ? (
-                <p className="text-sm text-amber-700 dark:text-amber-400">
-                  {versionString(target)} is newer than the source. Upgrading the marker
-                  is pointless &mdash; a higher console already loads this file. Pick an
-                  older version.
-                </p>
-              ) : !result?.changed ? (
-                <p className="text-sm text-foreground/60">
-                  Target equals the source &mdash; no conversion needed.
-                </p>
-              ) : (
-                <>
-                  <p className="text-sm">
-                    <span className="font-mono">{versionString(source)}</span>
-                    <span className="mx-2 text-foreground/40">&rarr;</span>
-                    <span className="font-mono font-medium">{versionString(target)}</span>
-                  </p>
-                  <div className="space-y-2 text-xs">
-                    <BeforeAfter label="Before" line={result!.before} tone="muted" />
-                    <BeforeAfter label="After" line={result!.after} tone="accent" />
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+          {/* Step 3 — review & download */}
+          <StepCard n={3} title="Review & download" state={step3} hint={step3Hint}>
+            {source && target && result && (
+              <>
+                {isUpgrade ? (
+                  <Callout tone="warning" title="Target is newer than the source">
+                    {versionString(target)} is newer than {versionString(source)}. A newer
+                    console already loads this file, so there is nothing to convert. Pick an
+                    older version.
+                  </Callout>
+                ) : !result.changed ? (
+                  <Callout tone="info" title="No conversion needed">
+                    The target equals the file’s current version marker.
+                  </Callout>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="font-mono text-[22px] leading-7 font-medium tracking-tight text-fg-muted">
+                        {versionString(source)}
+                      </span>
+                      <span className="text-accent">{Icon.arrowRight(20)}</span>
+                      <span className="font-mono text-[22px] leading-7 font-medium tracking-tight text-accent-strong">
+                        {versionString(target)}
+                      </span>
+                      <span className="ml-auto text-xs text-fg-muted">
+                        {rows.filter((r) => r.changed).length} of {rows.length} fields change
+                      </span>
+                    </div>
+                    <DiffTable rows={rows} />
+                    <RawTag before={result.before} after={result.after} />
+                  </>
+                )}
+                <button
+                  type="button"
+                  disabled={!canDownload}
+                  onClick={() => {
+                    if (!file || !result || !target) return;
+                    download(withVersionSuffix(file.name, target), result.output);
+                  }}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-5 py-3 text-sm font-medium text-on-accent transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:bg-muted disabled:text-fg-subtle"
+                >
+                  {Icon.download()}
+                  {canDownload && file
+                    ? `Download ${withVersionSuffix(file.name, target)}`
+                    : "Download converted file"}
+                </button>
+              </>
+            )}
+          </StepCard>
+        </div>
+      </main>
 
-          <button
-            type="button"
-            disabled={!canDownload}
-            onClick={() => {
-              if (!result || !target) return;
-              download(withVersionSuffix(file.name, target), result.output);
-            }}
-            className="w-full rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-background transition disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {target && canDownload
-              ? `Download ${withVersionSuffix(file.name, target)}`
-              : "Download converted file"}
-          </button>
-        </section>
-      )}
-    </main>
-  );
-}
-
-function BeforeAfter({
-  label,
-  line,
-  tone,
-}: {
-  label: string;
-  line: string;
-  tone: "muted" | "accent";
-}) {
-  return (
-    <div>
-      <span className="text-foreground/50">{label}</span>
-      <pre
-        className={`mt-1 overflow-x-auto whitespace-pre-wrap break-all rounded-md border px-3 py-2 font-mono ${
-          tone === "accent"
-            ? "border-foreground/30 bg-foreground/5"
-            : "border-foreground/10 text-foreground/60"
-        }`}
-      >
-        {line}
-      </pre>
+      <Footer />
     </div>
   );
 }

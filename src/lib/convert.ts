@@ -146,3 +146,39 @@ export function convert(xml: string, target: Version): ConvertResult {
   const output = xml.slice(0, index) + after + xml.slice(index + before.length);
   return { output, before, after, changed: output !== xml };
 }
+
+export type VersionField = "xsi:schemaLocation" | (typeof VERS_NAMES)[number];
+
+export interface FieldDiff {
+  field: VersionField;
+  /** The field's current value, or null when the field is absent from the <MA> tag. */
+  before: string | null;
+  /** The value after conversion, or null when absent (missing fields are never injected). */
+  after: string | null;
+  changed: boolean;
+}
+
+/**
+ * Per-field view of what `convert` will do: the schemaLocation path version and
+ * each *_vers attribute, read individually from the opening <MA> tag.
+ */
+export function diffFields(xml: string, target: Version): FieldDiff[] {
+  const { tag } = openingTag(xml);
+  const schema = SCHEMA_PATH_RE.exec(tag);
+  const rows: [VersionField, string | null, string][] = [
+    [
+      "xsi:schemaLocation",
+      schema ? `${+schema[1]}.${+schema[2]}.${+schema[3]}` : null,
+      `${target.major}.${target.minor}.${target.stream}`,
+    ],
+    ["major_vers", readAttr(tag, "major_vers")?.toString() ?? null, String(target.major)],
+    ["minor_vers", readAttr(tag, "minor_vers")?.toString() ?? null, String(target.minor)],
+    ["stream_vers", readAttr(tag, "stream_vers")?.toString() ?? null, String(target.stream)],
+  ];
+  return rows.map(([field, before, next]) => ({
+    field,
+    before,
+    after: before === null ? null : next,
+    changed: before !== null && before !== next,
+  }));
+}

@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "grandMA2 Version Convertor",
+  title: "gma2 converter — grandMA2 version downgrade",
   description:
     "Downgrade the version marker of grandMA2 XML files so older consoles can load them. Runs entirely in your browser.",
 };
@@ -28,7 +28,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="flex min-h-full flex-col bg-page font-sans text-fg">{children}</body>
     </html>
   );
 }

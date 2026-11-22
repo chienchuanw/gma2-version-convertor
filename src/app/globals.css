@@ -1,26 +1,80 @@
 @import "tailwindcss";
 
+/* Design tokens — mirror the Figma "color" collection (gma2 converter — UI). */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --bg-page: #ffffff;
+  --bg-surface: #fafafa;
+  --bg-muted: #f4f4f5;
+  --border-default: #e4e4e7;
+  --border-strong: #d4d4d8;
+  --text-primary: #18181b;
+  --text-muted: #52525b;
+  --text-subtle: #a1a1aa;
+  --text-on-accent: #ffffff;
+  --accent: #0d9488;
+  --accent-strong: #0f766e;
+  --accent-soft: #f0fdfa;
+  --accent-border: #99f6e4;
+  --accent-highlight: #ccfbf1;
+  --warning-bg: #fffbeb;
+  --warning-border: #fde68a;
+  --warning-text: #92400e;
+  --danger-bg: #fef2f2;
+  --danger-border: #fecaca;
+  --danger-text: #991b1b;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --bg-page: #0a0a0a;
+    --bg-surface: #131315;
+    --bg-muted: #1f1f23;
+    --border-default: #27272a;
+    --border-strong: #3f3f46;
+    --text-primary: #ededed;
+    --text-muted: #a1a1aa;
+    --text-subtle: #71717a;
+    --text-on-accent: #042f2e;
+    --accent: #2dd4bf;
+    --accent-strong: #5eead4;
+    --accent-soft: #0b201e;
+    --accent-border: #134e4a;
+    --accent-highlight: #134e4a;
+    --warning-bg: #1f1705;
+    --warning-border: #713f12;
+    --warning-text: #fcd34d;
+    --danger-bg: #1f0a0a;
+    --danger-border: #7f1d1d;
+    --danger-text: #fca5a5;
   }
 }
 
+@theme inline {
+  --color-page: var(--bg-page);
+  --color-surface: var(--bg-surface);
+  --color-muted: var(--bg-muted);
+  --color-line: var(--border-default);
+  --color-line-strong: var(--border-strong);
+  --color-fg: var(--text-primary);
+  --color-fg-muted: var(--text-muted);
+  --color-fg-subtle: var(--text-subtle);
+  --color-on-accent: var(--text-on-accent);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-border: var(--accent-border);
+  --color-accent-highlight: var(--accent-highlight);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-border: var(--warning-border);
+  --color-warning: var(--warning-text);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-border: var(--danger-border);
+  --color-danger: var(--danger-text);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-page);
+  color: var(--text-primary);
 }

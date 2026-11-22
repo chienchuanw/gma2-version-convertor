@@ -64,3 +64,11 @@ export function downgradeTargets(
     .filter((e) => compareVersions(e.version, source) < 0)
     .sort((a, b) => compareVersions(b.version, a.version));
 }
+
+/** Priority (commonly used) catalog versions strictly older than `source`, newest-first. */
+export function commonTargets(
+  source: Version,
+  catalog: CatalogEntry[] = CATALOG,
+): CatalogEntry[] {
+  return downgradeTargets(source, catalog).filter((e) => e.priority);
+}

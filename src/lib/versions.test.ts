@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   CATALOG,
+  commonTargets,
   downgradeTargets,
   versionString,
   withVersionSuffix,
@@ -77,5 +78,28 @@ describe("CATALOG", () => {
         prev.major - cur.major || prev.minor - cur.minor || prev.stream - cur.stream;
       expect(newer).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("commonTargets", () => {
+  it("returns only priority versions strictly older than the source, newest-first", () => {
+    expect(commonTargets({ major: 3, minor: 9, stream: 60 }).map((e) => e.label)).toEqual([
+      "3.9.0",
+      "3.8.0",
+      "3.3.4",
+    ]);
+  });
+
+  it("includes 3.9.60 when the source is newer", () => {
+    expect(commonTargets({ major: 3, minor: 9, stream: 63 }).map((e) => e.label)).toEqual([
+      "3.9.60",
+      "3.9.0",
+      "3.8.0",
+      "3.3.4",
+    ]);
+  });
+
+  it("is empty when no priority version is older", () => {
+    expect(commonTargets({ major: 3, minor: 3, stream: 4 })).toEqual([]);
   });
 });
