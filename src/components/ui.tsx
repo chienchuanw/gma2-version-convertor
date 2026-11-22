@@ -83,6 +83,13 @@ export const Icon = {
       <path d="M12 11v5m0-8h.01" />
     </Svg>
   ),
+  spinner: (s?: number) => (
+    <span className="inline-flex animate-spin motion-reduce:animate-none">
+      <Svg size={s}>
+        <path d="M21 12a9 9 0 1 1-6.2-8.56" />
+      </Svg>
+    </span>
+  ),
   error: (s?: number) => (
     <Svg size={s}>
       <circle cx="12" cy="12" r="9" />
@@ -207,9 +214,9 @@ export function Callout({
       className={`flex gap-3 rounded-lg border px-4 py-3 text-xs leading-[18px] ${c.cls}`}
     >
       <span className="mt-px">{c.icon()}</span>
-      <div className="space-y-1">
+      <div className="min-w-0 flex-1 space-y-1">
         <p className="font-medium">{title}</p>
-        <p>{children}</p>
+        <div>{children}</div>
       </div>
     </div>
   );
@@ -281,7 +288,14 @@ export function FileChip({
 
 /* ---------- Review ---------- */
 
-export function DiffTable({ rows }: { rows: FieldDiff[] }) {
+export function DiffTable({
+  rows,
+  unreadable = [],
+}: {
+  rows: FieldDiff[];
+  /** Fields present in the tag but not numeric — shown as left unchanged, not "not added". */
+  unreadable?: string[];
+}) {
   return (
     <div className="overflow-hidden rounded-lg border border-line">
       <table className="w-full table-fixed border-collapse text-left">
@@ -314,7 +328,9 @@ export function DiffTable({ rows }: { rows: FieldDiff[] }) {
               </td>
               <td className="px-2 py-2.5">
                 {r.after === null ? (
-                  <span className="text-fg-subtle">— (not added)</span>
+                  <span className="text-fg-subtle">
+                    {unreadable.includes(r.field) ? "— (unreadable, left as is)" : "— (not added)"}
+                  </span>
                 ) : r.changed ? (
                   <span className="rounded bg-accent-highlight px-2 py-0.5 text-sm font-medium text-accent-strong">
                     {r.after}

@@ -6,11 +6,11 @@ import {
   convert,
   detectVersion,
   diffFields,
-  NoVersionInfoError,
   NotGma2XmlError,
   type DetectResult,
   type Version,
 } from "@/lib/convert";
+import { createLatestGuard } from "@/lib/latest";
 import {
   CATALOG,
   commonTargets,
@@ -41,7 +41,12 @@ interface LoadedFile {
 interface LoadError {
   title: string;
   body: string;
+  /** Raw text to show verbatim (e.g. the unreadable <MA> tag). */
+  raw?: string;
 }
+
+const RAW_MAX = 600;
+const truncate = (s: string) => (s.length > RAW_MAX ? `${s.slice(0, RAW_MAX)}…` : s);
 
 /** Read a file preserving a leading UTF-8 BOM (TextDecoder ignoreBOM keeps it). */
 async function readFilePreservingBom(file: File): Promise<string> {
@@ -63,18 +68,41 @@ function download(filename: string, text: string) {
 
 const CUSTOM = "__custom__";
 
+/** Warning text for missing and/or non-numeric *_vers attributes (one string, so JSX keeps spaces). */
+function versAttrWarning(d: DetectResult): string {
+  const list = (names: string[]) => names.join(" and ");
+  const parts: string[] = [];
+  if (d.missingVers.length > 0) {
+    parts.push(
+      `${list(d.missingVers)} ${d.missingVers.length === 1 ? "is" : "are"} missing from the <MA> tag.`,
+    );
+  }
+  if (d.unreadableVers.length > 0) {
+    parts.push(
+      `${list(d.unreadableVers)} ${d.unreadableVers.length === 1 ? "has a value that isn’t" : "have values that aren’t"} a whole number.`,
+    );
+  }
+  parts.push("Conversion rewrites only the readable fields and never adds or changes the others.");
+  return parts.join(" ");
+}
+
 export default function Home() {
   const [file, setFile] = useState<LoadedFile | null>(null);
   const [error, setError] = useState<LoadError | null>(null);
   const [dragging, setDragging] = useState(false);
   const [choice, setChoice] = useState<string>(""); // catalog label or CUSTOM
   const [custom, setCustom] = useState({ major: "", minor: "", stream: "" });
+  const [loading, setLoading] = useState<string | null>(null); // name of the file being read
   const inputRef = useRef<HTMLInputElement>(null);
+  const [guard] = useState(createLatestGuard);
 
   const loadFile = useCallback(async (f: File) => {
+    // A newer selection supersedes any read still in flight.
+    const isCurrent = guard.start();
     setError(null);
     setFile(null);
     setChoice("");
+    setLoading(null);
     if (!f.name.toLowerCase().endsWith(".xml")) {
       setError({
         title: "Not an .xml file",
@@ -82,27 +110,34 @@ export default function Home() {
       });
       return;
     }
+    setLoading(f.name);
     try {
       const text = await readFilePreservingBom(f);
+      if (!isCurrent()) return;
       const detect = detectVersion(text); // throws NotGma2XmlError
-      if (detect.sourceVersion === null) throw new NoVersionInfoError();
+      if (detect.sourceVersion === null) {
+        setError({
+          title: "No version information",
+          body: `The <MA> tag in ${f.name} has no readable version marker (no schemaLocation version path and no complete set of numeric major/minor/stream_vers attributes), so there is nothing to convert. This is what was found:`,
+          raw: truncate(detect.rawTag),
+        });
+        return;
+      }
       setFile({ name: f.name, text, detect });
     } catch (e) {
+      if (!isCurrent()) return;
       if (e instanceof NotGma2XmlError) {
         setError({
           title: "Not a grandMA2 file",
           body: `${f.name} has no <MA> root tag. Choose an XML file exported from grandMA2 or grandMA2 onPC.`,
         });
-      } else if (e instanceof NoVersionInfoError) {
-        setError({
-          title: "No version information",
-          body: `The <MA> tag in ${f.name} has no schemaLocation path and no *_vers attributes, so there is nothing to convert.`,
-        });
       } else {
         setError({ title: "Couldn’t read this file", body: `${f.name} could not be read.` });
       }
+    } finally {
+      if (isCurrent()) setLoading(null);
     }
-  }, []);
+  }, [guard]);
 
   // Accept drops anywhere on the page (also after a file is loaded, to replace it).
   // Without this, a drop outside the dropzone makes the browser open the file and
@@ -208,6 +243,24 @@ export default function Home() {
                 meta={`Detected grandMA2 ${versionString(source)}`}
                 onReplace={pick}
               />
+            ) : loading ? (
+              <div
+                role="status"
+                className="flex h-[168px] w-full flex-col items-center justify-center gap-2 rounded-xl border-[1.5px] border-dashed border-accent bg-accent-soft"
+              >
+                <span className="text-accent-strong">{Icon.spinner(20)}</span>
+                <span className="max-w-full px-4 text-sm font-medium break-all">
+                  Reading {loading}…
+                </span>
+                <span className="text-xs text-fg-muted">Large exports can take a moment.</span>
+                <button
+                  type="button"
+                  onClick={pick}
+                  className="mt-1 text-xs font-medium text-accent-strong hover:underline"
+                >
+                  Choose a different file
+                </button>
+              </div>
             ) : (
               <button
                 type="button"
@@ -236,6 +289,11 @@ export default function Home() {
             {error && (
               <Callout tone="error" title={error.title}>
                 {error.body}
+                {error.raw && (
+                  <pre className="mt-2 whitespace-pre-wrap break-all rounded-md border border-danger-border bg-page px-3 py-2 font-mono text-fg-muted">
+                    {error.raw}
+                  </pre>
+                )}
               </Callout>
             )}
             {file?.detect.mismatch && file.detect.schemaVersion && file.detect.attrVersion && (
@@ -246,10 +304,9 @@ export default function Home() {
                 source, and conversion sets both to the same target.
               </Callout>
             )}
-            {file?.detect.partial && (
+            {file && (file.detect.partial || file.detect.unreadableVers.length > 0) && (
               <Callout tone="warning" title="Version attributes incomplete">
-                Not all of major_vers / minor_vers / stream_vers are present in the &lt;MA&gt;
-                tag. Conversion rewrites the fields that exist and never adds new ones.
+                {versAttrWarning(file.detect)}
               </Callout>
             )}
           </StepCard>
@@ -360,7 +417,7 @@ export default function Home() {
                         {rows.filter((r) => r.before !== null).length} fields change
                       </span>
                     </div>
-                    <DiffTable rows={rows} />
+                    <DiffTable rows={rows} unreadable={file?.detect.unreadableVers ?? []} />
                     <RawTag before={result.before} after={result.after} />
                   </>
                 )}

@@ -39,6 +39,9 @@ npm run dev      # local dev server
 npm test         # run the core unit tests
 ```
 
+Branches: feature work goes into **`dev`** via PR; `dev` is merged into **`main`** (production,
+auto-deployed to Vercel) only for a tagged release.
+
 ## Roadmap (not in V1)
 
 - Content-aware downgrade (transform elements an older schema can't handle).

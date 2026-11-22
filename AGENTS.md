@@ -25,5 +25,11 @@ parse-and-reserialize the whole document. Downgrade only.
 
 ## Workflow
 - TDD the core: write the failing Vitest test first, watch it fail, then implement. `npm test`.
-- Git: default branch `main`; never commit directly to `main` for feature work — branch + PR. The
-  remote is `origin` (git@github.com:chienchuanw/gma2-version-convertor.git).
+- Git flow — `dev` is the integration branch (and the GitHub default); `main` is production.
+  - Cut feature/fix branches from `dev` and open the PR **into `dev`**. Never commit directly to
+    `dev` or `main`.
+  - Release: once `dev` is verified, open a PR **`dev` → `main`**. Merging to `main` triggers the
+    Vercel production deploy (https://gma2-converter.vercel.app); then tag `vX.Y.Z` on `main`,
+    publish the GitHub Release, and update `docs/progress.md`.
+  - Never delete `dev`, even when it is identical to `main`.
+  - The remote is `origin` (git@github.com:chienchuanw/gma2-version-convertor.git).

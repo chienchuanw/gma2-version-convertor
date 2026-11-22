@@ -222,3 +222,81 @@ describe("convert / diffFields consistency on malformed values", () => {
     expect(diffFields(odd, t334)[0].before).toBe("03.09.060");
   });
 });
+
+describe("detectVersion rawTag", () => {
+  it("returns the opening <MA> tag exactly as written", () => {
+    const tag = '<MA xsi:schemaLocation="http://x/xml/3.x.60/MA.xsd" major_vers=\'three\'>';
+    const r = detectVersion(`<?xml version="1.0"?>\n${tag}\n</MA>`);
+    expect(r.rawTag).toBe(tag);
+    expect(r.sourceVersion).toBeNull();
+  });
+});
+
+describe("detectVersion missingVers", () => {
+  const path = 'xsi:schemaLocation="http://schemas.malighting.de/grandma2/xml/3.9.60/MA.xsd"';
+
+  it("is empty when all three *_vers are present", () => {
+    expect(detectVersion(genuine3960).missingVers).toEqual([]);
+  });
+
+  it("lists the one missing field", () => {
+    const r = detectVersion(`<MA ${path} major_vers="3" minor_vers="9">`);
+    expect(r.missingVers).toEqual(["stream_vers"]);
+    expect(r.partial).toBe(true);
+  });
+
+  it("lists two missing fields in major/minor/stream order", () => {
+    const r = detectVersion(`<MA ${path} stream_vers="60">`);
+    expect(r.missingVers).toEqual(["major_vers", "minor_vers"]);
+  });
+
+  it("is empty when none are present (schema-only files are not partial)", () => {
+    const r = detectVersion(`<MA ${path}>`);
+    expect(r.missingVers).toEqual([]);
+    expect(r.partial).toBe(false);
+  });
+});
+
+describe("detectVersion unreadableVers", () => {
+  const path = 'xsi:schemaLocation="http://schemas.malighting.de/grandma2/xml/3.9.60/MA.xsd"';
+
+  it("reports a present but non-integer field as unreadable, not missing", () => {
+    const r = detectVersion(`<MA ${path} major_vers="3.5" minor_vers="9" stream_vers="60">`);
+    expect(r.missingVers).toEqual([]);
+    expect(r.unreadableVers).toEqual(["major_vers"]);
+    expect(r.partial).toBe(true);
+  });
+
+  it("reports an empty value as unreadable", () => {
+    const r = detectVersion(`<MA ${path} major_vers="3" minor_vers="9" stream_vers="">`);
+    expect(r.unreadableVers).toEqual(["stream_vers"]);
+    expect(r.missingVers).toEqual([]);
+  });
+
+  it("lists unreadable fields even when none are numeric", () => {
+    const r = detectVersion(`<MA ${path} major_vers="a" minor_vers="b" stream_vers="c">`);
+    expect(r.unreadableVers).toEqual(["major_vers", "minor_vers", "stream_vers"]);
+    expect(r.partial).toBe(false);
+  });
+
+  it("is empty for a genuine file", () => {
+    expect(detectVersion(genuine3960).unreadableVers).toEqual([]);
+  });
+});
+
+describe("attribute names must match exactly", () => {
+  const tag =
+    '<MA xsi:schemaLocation="http://schemas.malighting.de/grandma2/xml/3.9.60/MA.xsd" xmajor_vers="3" minor_vers="9" stream_vers="60">';
+
+  it("does not read a longer attribute name that ends in major_vers", () => {
+    const r = detectVersion(tag);
+    expect(r.missingVers).toEqual(["major_vers"]);
+    expect(r.unreadableVers).toEqual([]);
+  });
+
+  it("does not rewrite that unrelated attribute", () => {
+    const { after } = convert(tag, { major: 2, minor: 5, stream: 3 });
+    expect(after).toContain('xmajor_vers="3"');
+    expect(after).toContain('minor_vers="5"');
+  });
+});

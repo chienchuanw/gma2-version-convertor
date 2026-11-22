@@ -20,6 +20,18 @@ export interface DetectResult {
   mismatch: boolean;
   /** True when *_vers is partially present (1 or 2 of the three) — a hand-edited anomaly. */
   partial: boolean;
+  /**
+   * Which *_vers attributes are absent when `partial` (in major/minor/stream order);
+   * empty when all three or none are readable.
+   */
+  missingVers: VersName[];
+  /**
+   * *_vers attributes that are present but whose value is not a whole number
+   * (e.g. "3.5" or ""). They are never rewritten.
+   */
+  unreadableVers: VersName[];
+  /** The opening <MA ...> tag exactly as written, for showing the user what was found. */
+  rawTag: string;
 }
 
 /** Thrown when the input is not a grandMA2 XML file (no <MA> root element). */
@@ -54,10 +66,19 @@ export interface ConvertResult {
 const MA_OPEN_TAG_RE = /<MA\b[^>]*>/;
 const SCHEMA_PATH_RE = /xml\/(\d+)\.(\d+)\.(\d+)\/MA\.xsd/;
 const VERS_NAMES = ["major_vers", "minor_vers", "stream_vers"] as const;
+export type VersName = (typeof VERS_NAMES)[number];
 
 /** Match a single numeric version attribute, allowing single or double quotes. */
+/** The attribute name must start a name (so `xmajor_vers` is not `major_vers`). */
+const NAME_START = "(?<![\\w:.-])";
+
 function attrRe(name: string): RegExp {
-  return new RegExp(`${name}\\s*=\\s*(["'])(\\d+)\\1`);
+  return new RegExp(`${NAME_START}${name}\\s*=\\s*(["'])(\\d+)\\1`);
+}
+
+/** Whether the attribute is present at all, whatever its value. */
+function hasAttr(tag: string, name: string): boolean {
+  return new RegExp(`${NAME_START}${name}\\s*=`).test(tag);
 }
 
 /** Read a numeric version attribute's value from a tag string, or null if absent. */
@@ -106,13 +127,20 @@ export function detectVersion(xml: string): DetectResult {
     sourceVersion = attrVersion ?? schemaVersion;
   }
 
+  const partial = presentCount > 0 && presentCount < 3;
+
   return {
     attrVersion,
     schemaVersion,
     hasSchemaLocation: schemaVersion !== null,
     sourceVersion,
     mismatch,
-    partial: presentCount > 0 && presentCount < 3,
+    partial,
+    missingVers: partial
+      ? VERS_NAMES.filter((n, i) => nums[i] === null && !hasAttr(tag, n))
+      : [],
+    unreadableVers: VERS_NAMES.filter((n, i) => nums[i] === null && hasAttr(tag, n)),
+    rawTag: tag,
   };
 }
 
@@ -139,7 +167,7 @@ export function convert(xml: string, target: Version): ConvertResult {
   for (const name of VERS_NAMES) {
     // Same shape readAttr accepts (whole value is digits), so only readable fields change.
     after = after.replace(
-      new RegExp(`(${name}\\s*=\\s*(["']))\\d+(?=\\2)`),
+      new RegExp(`(${NAME_START}${name}\\s*=\\s*(["']))\\d+(?=\\2)`),
       `$1${values[name]}`,
     );
   }
@@ -148,7 +176,7 @@ export function convert(xml: string, target: Version): ConvertResult {
   return { output, before, after, changed: output !== xml };
 }
 
-export type VersionField = "xsi:schemaLocation" | (typeof VERS_NAMES)[number];
+export type VersionField = "xsi:schemaLocation" | VersName;
 
 export interface FieldDiff {
   field: VersionField;
