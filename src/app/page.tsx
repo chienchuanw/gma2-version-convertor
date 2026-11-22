@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   compareVersions,
   convert,
@@ -104,15 +104,24 @@ export default function Home() {
     }
   }, []);
 
-  const onDrop = useCallback(
-    (e: React.DragEvent) => {
+  // Accept drops anywhere on the page (also after a file is loaded, to replace it).
+  // Without this, a drop outside the dropzone makes the browser open the file and
+  // navigate away, losing all state.
+  useEffect(() => {
+    const onDragOver = (e: DragEvent) => e.preventDefault();
+    const onDrop = (e: DragEvent) => {
       e.preventDefault();
       setDragging(false);
-      const f = e.dataTransfer.files?.[0];
+      const f = e.dataTransfer?.files?.[0];
       if (f) void loadFile(f);
-    },
-    [loadFile],
-  );
+    };
+    window.addEventListener("dragover", onDragOver);
+    window.addEventListener("drop", onDrop);
+    return () => {
+      window.removeEventListener("dragover", onDragOver);
+      window.removeEventListener("drop", onDrop);
+    };
+  }, [loadFile]);
 
   const source = file?.detect.sourceVersion ?? null;
   const targets = useMemo(() => (source ? downgradeTargets(source) : []), [source]);
@@ -208,7 +217,6 @@ export default function Home() {
                   setDragging(true);
                 }}
                 onDragLeave={() => setDragging(false)}
-                onDrop={onDrop}
                 className={`flex h-[168px] w-full flex-col items-center justify-center gap-2 rounded-xl border-[1.5px] border-dashed transition ${
                   dragging
                     ? "border-accent bg-accent-soft"
@@ -348,7 +356,8 @@ export default function Home() {
                         {versionString(target)}
                       </span>
                       <span className="ml-auto text-xs text-fg-muted">
-                        {rows.filter((r) => r.changed).length} of {rows.length} fields change
+                        {rows.filter((r) => r.changed).length} of{" "}
+                        {rows.filter((r) => r.before !== null).length} fields change
                       </span>
                     </div>
                     <DiffTable rows={rows} />

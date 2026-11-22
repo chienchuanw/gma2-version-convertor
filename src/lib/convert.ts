@@ -137,8 +137,9 @@ export function convert(xml: string, target: Version): ConvertResult {
     `xml/${target.major}.${target.minor}.${target.stream}/MA.xsd`,
   );
   for (const name of VERS_NAMES) {
+    // Same shape readAttr accepts (whole value is digits), so only readable fields change.
     after = after.replace(
-      new RegExp(`(${name}\\s*=\\s*["'])\\d+`),
+      new RegExp(`(${name}\\s*=\\s*(["']))\\d+(?=\\2)`),
       `$1${values[name]}`,
     );
   }
@@ -168,7 +169,7 @@ export function diffFields(xml: string, target: Version): FieldDiff[] {
   const rows: [VersionField, string | null, string][] = [
     [
       "xsi:schemaLocation",
-      schema ? `${+schema[1]}.${+schema[2]}.${+schema[3]}` : null,
+      schema ? `${schema[1]}.${schema[2]}.${schema[3]}` : null,
       `${target.major}.${target.minor}.${target.stream}`,
     ],
     ["major_vers", readAttr(tag, "major_vers")?.toString() ?? null, String(target.major)],
