@@ -24,7 +24,7 @@ function wideEncoding(b: Uint8Array): string | null {
   return null;
 }
 
-const DECL_ENCODING_RE = /^﻿?<\?xml\b[^>]*?\bencoding\s*=\s*(["'])([^"']*)\1/;
+const DECL_ENCODING_RE = /^\uFEFF?<\?xml\s[^>]*?\bencoding\s*=\s*(["'])([^"']*)\1/;
 
 /**
  * Decode bytes as UTF-8, keeping a leading BOM, or throw UnsupportedEncodingError.
@@ -44,6 +44,13 @@ export function decodeUtf8Strict(bytes: Uint8Array): string {
   } catch {
     throw new UnsupportedEncodingError(
       "This file is not valid UTF-8 (it was probably saved in a legacy encoding such as Windows-1252). grandMA2 writes XML as UTF-8 — re-save it as UTF-8 and try again.",
+    );
+  }
+
+  // NUL is legal UTF-8 but never appears in XML; it means UTF-16/32 without a BOM.
+  if (text.includes("\0")) {
+    throw new UnsupportedEncodingError(
+      "This file contains NUL bytes, so it is probably UTF-16 or UTF-32 without a byte-order mark. grandMA2 writes XML as UTF-8 — re-save it as UTF-8 and try again.",
     );
   }
 
