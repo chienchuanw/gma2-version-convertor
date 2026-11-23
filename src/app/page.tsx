@@ -10,6 +10,18 @@ import {
   type DetectResult,
   type Version,
 } from "@/lib/convert";
+import {
+  analyzeBatch,
+  batchSourceVersion,
+  buildZip,
+  convertBatch,
+  zipLayout,
+  type BatchEntry,
+  type BatchInput,
+} from "@/lib/batch";
+import { downgradeCaveats } from "@/lib/caveats";
+import { collectDropped, isXmlPath, type Picked } from "@/lib/drop";
+import { decodeUtf8Strict, encodeUtf8, UnsupportedEncodingError } from "@/lib/encoding";
 import { createLatestGuard } from "@/lib/latest";
 import {
   CATALOG,
@@ -31,11 +43,18 @@ import {
   VersionChip,
   type StepState,
 } from "@/components/ui";
+import { BatchReview, FileList } from "@/components/batch";
 
 interface LoadedFile {
   name: string;
   text: string;
   detect: DetectResult;
+}
+
+interface LoadedBatch {
+  entries: BatchEntry[];
+  /** Non-.xml files left out (including macOS "._*" metadata files on USB sticks). */
+  ignored: number;
 }
 
 interface LoadError {
@@ -48,14 +67,12 @@ interface LoadError {
 const RAW_MAX = 600;
 const truncate = (s: string) => (s.length > RAW_MAX ? `${s.slice(0, RAW_MAX)}…` : s);
 
-/** Read a file preserving a leading UTF-8 BOM (TextDecoder ignoreBOM keeps it). */
-async function readFilePreservingBom(file: File): Promise<string> {
-  const buf = await file.arrayBuffer();
-  return new TextDecoder("utf-8", { ignoreBOM: true }).decode(buf);
+/** Read a file as strict UTF-8, keeping a leading BOM (throws UnsupportedEncodingError). */
+async function readUtf8File(file: File): Promise<string> {
+  return decodeUtf8Strict(new Uint8Array(await file.arrayBuffer()));
 }
 
-function download(filename: string, text: string) {
-  const blob = new Blob([text], { type: "application/xml;charset=utf-8" });
+function downloadBlob(filename: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -64,6 +81,11 @@ function download(filename: string, text: string) {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+function download(filename: string, text: string) {
+  // encodeUtf8 is the exact inverse of decodeUtf8Strict, so unchanged bytes stay unchanged.
+  downloadBlob(filename, new Blob([encodeUtf8(text)], { type: "application/xml;charset=utf-8" }));
 }
 
 const CUSTOM = "__custom__";
@@ -88,12 +110,14 @@ function versAttrWarning(d: DetectResult): string {
 
 export default function Home() {
   const [file, setFile] = useState<LoadedFile | null>(null);
+  const [batch, setBatch] = useState<LoadedBatch | null>(null);
   const [error, setError] = useState<LoadError | null>(null);
   const [dragging, setDragging] = useState(false);
   const [choice, setChoice] = useState<string>(""); // catalog label or CUSTOM
   const [custom, setCustom] = useState({ major: "", minor: "", stream: "" });
   const [loading, setLoading] = useState<string | null>(null); // name of the file being read
   const inputRef = useRef<HTMLInputElement>(null);
+  const folderRef = useRef<HTMLInputElement>(null);
   const [guard] = useState(createLatestGuard);
 
   const loadFile = useCallback(async (f: File) => {
@@ -101,6 +125,7 @@ export default function Home() {
     const isCurrent = guard.start();
     setError(null);
     setFile(null);
+    setBatch(null);
     setChoice("");
     setLoading(null);
     if (!f.name.toLowerCase().endsWith(".xml")) {
@@ -112,7 +137,7 @@ export default function Home() {
     }
     setLoading(f.name);
     try {
-      const text = await readFilePreservingBom(f);
+      const text = await readUtf8File(f);
       if (!isCurrent()) return;
       const detect = detectVersion(text); // throws NotGma2XmlError
       if (detect.sourceVersion === null) {
@@ -126,7 +151,9 @@ export default function Home() {
       setFile({ name: f.name, text, detect });
     } catch (e) {
       if (!isCurrent()) return;
-      if (e instanceof NotGma2XmlError) {
+      if (e instanceof UnsupportedEncodingError) {
+        setError({ title: "Unsupported text encoding", body: `${f.name}: ${e.message}` });
+      } else if (e instanceof NotGma2XmlError) {
         setError({
           title: "Not a grandMA2 file",
           body: `${f.name} has no <MA> root tag. Choose an XML file exported from grandMA2 or grandMA2 onPC.`,
@@ -139,6 +166,62 @@ export default function Home() {
     }
   }, [guard]);
 
+  /** Several files or a folder → batch mode. A single picked file keeps the single-file flow. */
+  const loadPicked = useCallback(
+    async (picked: Picked[], folder: boolean) => {
+      if (picked.length === 0) {
+        setLoading(null);
+        return;
+      }
+      if (picked.length === 1 && !folder) return loadFile(picked[0].file);
+      const isCurrent = guard.start();
+      setError(null);
+      setFile(null);
+      setBatch(null);
+      setChoice("");
+      const xml = picked.filter((p) => isXmlPath(p.path));
+      if (xml.length === 0) {
+        setLoading(null);
+        setError({
+          title: "No .xml files",
+          body: `None of the ${picked.length} selected files is an .xml file. Choose grandMA2 .xml exports or the folder that contains them.`,
+        });
+        return;
+      }
+      setLoading(`${xml.length} files`);
+      try {
+        const inputs: BatchInput[] = [];
+        for (const p of xml) {
+          try {
+            inputs.push({ path: p.path, text: decodeUtf8Strict(new Uint8Array(await p.file.arrayBuffer())) });
+          } catch (e) {
+            inputs.push({
+              path: p.path,
+              error: e instanceof UnsupportedEncodingError ? e.message : "Couldn’t read this file.",
+            });
+          }
+          if (!isCurrent()) return;
+        }
+        const entries = analyzeBatch(inputs);
+        setBatch({ entries, ignored: picked.length - xml.length });
+        if (entries.every((e) => e.status === "skipped")) {
+          setError({
+            title: "Nothing to convert",
+            body: "None of these files is a grandMA2 XML file with a readable version marker.",
+          });
+        }
+      } finally {
+        if (isCurrent()) setLoading(null);
+      }
+    },
+    [guard, loadFile],
+  );
+
+  useEffect(() => {
+    // Not in React's typings; enables picking a whole folder (with relative paths).
+    folderRef.current?.setAttribute("webkitdirectory", "");
+  }, []);
+
   // Accept drops anywhere on the page (also after a file is loaded, to replace it).
   // Without this, a drop outside the dropzone makes the browser open the file and
   // navigate away, losing all state.
@@ -147,8 +230,27 @@ export default function Home() {
     const onDrop = (e: DragEvent) => {
       e.preventDefault();
       setDragging(false);
-      const f = e.dataTransfer?.files?.[0];
-      if (f) void loadFile(f);
+      if (!e.dataTransfer) return;
+      // Walking a dropped folder can take a while: claim "latest pick" now and show progress,
+      // so a file picked during the walk wins and the old walk's result is dropped.
+      const isCurrent = guard.start();
+      setError(null);
+      setFile(null);
+      setBatch(null);
+      setChoice("");
+      setLoading("dropped items");
+      collectDropped(e.dataTransfer)
+        .then(({ picked, folder }) => {
+          if (isCurrent()) return loadPicked(picked, folder);
+        })
+        .catch(() => {
+          if (!isCurrent()) return;
+          setLoading(null);
+          setError({
+            title: "Couldn’t read the dropped folder",
+            body: "Some files or folders couldn’t be read (they may have been moved or need permission). Try again, or use “Choose a folder”.",
+          });
+        });
     };
     window.addEventListener("dragover", onDragOver);
     window.addEventListener("drop", onDrop);
@@ -156,9 +258,11 @@ export default function Home() {
       window.removeEventListener("dragover", onDragOver);
       window.removeEventListener("drop", onDrop);
     };
-  }, [loadFile]);
+  }, [guard, loadPicked]);
 
-  const source = file?.detect.sourceVersion ?? null;
+  const batchSource = useMemo(() => (batch ? batchSourceVersion(batch.entries) : null), [batch]);
+  const source = file?.detect.sourceVersion ?? batchSource;
+  const loaded = !!file || !!batchSource;
   const targets = useMemo(() => (source ? downgradeTargets(source) : []), [source]);
   const common = useMemo(() => (source ? commonTargets(source) : []), [source]);
 
@@ -195,12 +299,30 @@ export default function Home() {
     [file, target],
   );
 
+  const caveats = useMemo(
+    () => (file && source && target ? downgradeCaveats(file.text, source, target) : []),
+    [file, source, target],
+  );
+
+  const batchResult = useMemo(
+    () =>
+      batch && source && target && compareVersions(target, source) < 0
+        ? convertBatch(batch.entries, target)
+        : null,
+    [batch, source, target],
+  );
+  const zip = useMemo(() => {
+    if (!batchResult || !target) return null;
+    const { prefix, name } = zipLayout(batchResult.files.map((f) => f.path));
+    return { prefix, filename: `${name ?? "grandMA2-xml"}_${versionString(target)}.zip` };
+  }, [batchResult, target]);
+
   const isUpgrade = !!(source && target && compareVersions(target, source) > 0);
   const canDownload = !!(result && result.changed && !isUpgrade);
-  const noTargets = !!file && targets.length === 0;
+  const noTargets = loaded && targets.length === 0;
 
-  const step2: StepState = !file ? "locked" : target ? "done" : "active";
-  const step3: StepState = !file || !target ? "locked" : "active";
+  const step2: StepState = !loaded ? "locked" : target ? "done" : "active";
+  const step3: StepState = !loaded || !target ? "locked" : "active";
   const step3Hint = noTargets && choice !== CUSTOM ? "No conversion needed" : undefined;
 
   const pick = () => inputRef.current?.click();
@@ -227,17 +349,33 @@ export default function Home() {
             ref={inputRef}
             type="file"
             accept=".xml,application/xml,text/xml"
+            multiple
             className="hidden"
             onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void loadFile(f);
+              const picked = [...(e.target.files ?? [])].map((file) => ({ file, path: file.name }));
+              void loadPicked(picked, false);
+              e.target.value = "";
+            }}
+          />
+          <input
+            ref={folderRef}
+            type="file"
+            className="hidden"
+            onChange={(e) => {
+              const picked = [...(e.target.files ?? [])].map((file) => ({
+                file,
+                path: file.webkitRelativePath || file.name,
+              }));
+              void loadPicked(picked, true);
               e.target.value = "";
             }}
           />
 
           {/* Step 1 — upload */}
-          <StepCard n={1} title="Upload file" state={file ? "done" : "active"}>
-            {file && source ? (
+          <StepCard n={1} title="Upload files" state={loaded ? "done" : "active"}>
+            {batch && !loading ? (
+              <FileList entries={batch.entries} ignored={batch.ignored} onReplace={pick} />
+            ) : file && source ? (
               <FileChip
                 name={file.name}
                 meta={`Detected grandMA2 ${versionString(source)}`}
@@ -280,10 +418,23 @@ export default function Home() {
                   {Icon.upload(18)}
                 </span>
                 <span className="text-sm font-medium">
-                  Drop a grandMA2 <code className="font-mono">.xml</code> file here
+                  Drop grandMA2 <code className="font-mono">.xml</code> files or an exported folder
                 </span>
                 <span className="text-xs text-fg-muted">or click to browse</span>
               </button>
+            )}
+            {!loaded && !loading && (
+              <p className="-mt-1 text-center text-xs text-fg-muted">
+                Converting a whole show export?{" "}
+                <button
+                  type="button"
+                  onClick={() => folderRef.current?.click()}
+                  className="font-medium text-accent-strong hover:underline"
+                >
+                  Choose a folder
+                </button>{" "}
+                — every <code className="font-mono">.xml</code> inside is converted into one zip.
+              </p>
             )}
 
             {error && (
@@ -316,7 +467,7 @@ export default function Home() {
             n={2}
             title="Choose target version"
             state={step2}
-            hint={!file ? "Upload a file first" : undefined}
+            hint={!loaded ? "Upload a file first" : undefined}
           >
             {noTargets && choice !== CUSTOM && source && (
               <Callout tone="info" title="Already the oldest known version">
@@ -390,7 +541,38 @@ export default function Home() {
 
           {/* Step 3 — review & download */}
           <StepCard n={3} title="Review & download" state={step3} hint={step3Hint}>
-            {source && target && result && (
+            {batch && source && target && (
+              <>
+                {isUpgrade ? (
+                  <Callout tone="warning" title="Target is newer than the source">
+                    {versionString(target)} is newer than every file in this batch (newest:{" "}
+                    {versionString(source)}), so there is nothing to convert. Pick an older version.
+                  </Callout>
+                ) : !batchResult ? (
+                  <Callout tone="info" title="No conversion needed">
+                    The target equals the newest version in this batch.
+                  </Callout>
+                ) : (
+                  <BatchReview result={batchResult} source={source} target={target} />
+                )}
+                <button
+                  type="button"
+                  disabled={!batchResult || batchResult.changedCount === 0 || !zip}
+                  onClick={() => {
+                    if (!batchResult || !zip) return;
+                    const bytes = buildZip(batchResult.files, zip.prefix);
+                    downloadBlob(zip.filename, new Blob([bytes], { type: "application/zip" }));
+                  }}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-5 py-3 text-sm font-medium text-on-accent transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:bg-muted disabled:text-fg-subtle"
+                >
+                  {Icon.download()}
+                  {batchResult && batchResult.changedCount > 0 && zip
+                    ? `Download ${zip.filename}`
+                    : "Download zip"}
+                </button>
+              </>
+            )}
+            {!batch && source && target && result && (
               <>
                 {isUpgrade ? (
                   <Callout tone="warning" title="Target is newer than the source">
@@ -418,6 +600,11 @@ export default function Home() {
                       </span>
                     </div>
                     <DiffTable rows={rows} unreadable={file?.detect.unreadableVers ?? []} />
+                    {caveats.map((c) => (
+                      <Callout key={c.id} tone="warning" title="Check before importing">
+                        {c.message}
+                      </Callout>
+                    ))}
                     <RawTag before={result.before} after={result.after} />
                   </>
                 )}

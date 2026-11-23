@@ -1,20 +1,21 @@
 # Development Progress
 
-_Last updated: 2026-11-22 · Current release: **v1.1.0**_
+_Last updated: 2026-11-23 · Current release: **v1.2.0**_
 
 ## Status
 
-**V1.1 is live** at https://gma2-converter.vercel.app (Vercel project
+**V1.2 is live** at https://gma2-converter.vercel.app (Vercel project
 `gma2-converter`, production deployed from `main` via the Git integration).
 
 | Area | State |
 | --- | --- |
 | Conversion core (`src/lib/convert.ts`) | Done — marker rewrite, hardened detection, diff fields |
-| Version catalog (`src/lib/versions.ts`, `docs/grandma2-versions.md`) | Done — 2.5.3 → 3.9.63 |
-| Converter UI (`src/app/page.tsx`) | Done — Figma redesign (step cards, diff table, common targets); raw `<MA>` tag, reading state, field-level warnings |
+| Version catalog (`src/lib/versions.ts`, `docs/grandma2-versions.md`) | Done — 2.5.3 → 3.9.63; 3.9.63 confirmed from a real export, 2.6.0/2.7.0/2.9.1 still inferred |
+| Converter UI (`src/app/page.tsx`) | Done — Figma redesign (step cards, diff table, common targets); raw `<MA>` tag, reading state, field-level warnings; strict UTF-8 input; user-profile caveat; batch / folder → zip |
 | Privacy guard | Done — CSP `connect-src 'self'` blocks any off-origin request |
+| Real-software verification | Done — converted files load on onPC 3.3.4.1, 3.7.0.5, 3.9.0.3, 3.9.60.50 (see `docs/grandma2-versions.md`) |
 | Deployment | Done — production on Vercel |
-| Tests | 51 passing (Vitest, core + read-race guard; UI verified in the browser) |
+| Tests | 93 passing (Vitest: core, encoding, caveats, batch, folder walk; UI verified in the browser) |
 
 ## Milestones
 
@@ -31,6 +32,11 @@ _Last updated: 2026-11-22 · Current release: **v1.1.0**_
 | 2026-11-22 | [#15](https://github.com/chienchuanw/gma2-version-convertor/pull/15) | Raw `<MA>` tag on unreadable version, reading state, superseded reads ignored (closes #10, #11) |
 | 2026-11-22 | [#16](https://github.com/chienchuanw/gma2-version-convertor/pull/16) | Name missing vs non-numeric `*_vers` fields; exact attribute-name matching (closes #13) |
 | 2026-11-22 | — | **v1.1.0** released (tag `v1.1.0`, GitHub Release) |
+| 2026-11-22 | [#20](https://github.com/chienchuanw/gma2-version-convertor/pull/20) | Record onPC verification: version gate, `.show.gz` is binary, 3.9.63 header (closes #6, #8, #9) |
+| 2026-11-22 | [#21](https://github.com/chienchuanw/gma2-version-convertor/pull/21) | Reject non-UTF-8 input instead of re-encoding it (closes #12) |
+| 2026-11-22 | [#22](https://github.com/chienchuanw/gma2-version-convertor/pull/22) | Warn before converting a newer UserProfiles export (closes #19) |
+| 2026-11-22 | [#23](https://github.com/chienchuanw/gma2-version-convertor/pull/23) | Batch-convert files or an exported show folder into one zip (closes #7) |
+| 2026-11-23 | — | **v1.2.0** released (tag `v1.2.0`, GitHub Release) |
 
 ## Branch flow
 
@@ -44,20 +50,14 @@ feature/fix branch ──PR──▶ dev ──PR (release)──▶ main ──
 
 ## Open issues (v1.x backlog)
 
-| Type | Issue |
-| --- | --- |
-| Bug | [#12](https://github.com/chienchuanw/gma2-version-convertor/issues/12) Non-UTF-8 input is silently re-encoded as UTF-8 on download |
-| Feat | [#7](https://github.com/chienchuanw/gma2-version-convertor/issues/7) Batch-convert exported showfile XML folders with zip download |
-| Doc | [#6](https://github.com/chienchuanw/gma2-version-convertor/issues/6) Verify `.show.gz` format before keeping it on the roadmap |
-| Doc | [#8](https://github.com/chienchuanw/gma2-version-convertor/issues/8) Verify downgraded files load on real older grandMA2 software |
-| Doc | [#9](https://github.com/chienchuanw/gma2-version-convertor/issues/9) Confirm inferred catalog versions (3.9.63, 2.9.1, 2.7.0, 2.6.0) |
+None — every v1.x issue is closed.
+
+Not yet tested on real software: the 3.8.0 target (no onPC 3.8 available) and any 2.x version.
 
 ## Next (out of V1 scope)
 
 Tracked in `SPEC.md` → _Future_:
 
 - **B: content-aware downgrade** — strip/transform elements an older schema cannot handle.
-- `.show.gz` support (decompress → rewrite → recompress).
-- Batch / multi-file conversion with zip download.
 - i18n (zh-TW); arbitrary-direction conversion if a use case emerges.
 - Reuse the core in an MCP server / VS Code extension.
