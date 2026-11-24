@@ -169,4 +169,7 @@ conventions are in [`AGENTS.md`](./AGENTS.md).
 
 ## License
 
-This project does not specify a license yet.
+This project is licensed under the [MIT License](./LICENSE).
+
+grandMA2 is a trademark of MA Lighting Technology GmbH. This project is not affiliated with or
+endorsed by MA Lighting.
