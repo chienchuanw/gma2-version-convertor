@@ -98,23 +98,28 @@ Owner picked A on the recommendation.
   the hub to tools are plain `<a>` (cross-zone, hard navigation), per the multi-zones guide.
 - Tool destinations come from env vars (e.g. `CONVERT_ORIGIN`, `FORM_ORIGIN`) so preview and
   local dev can point elsewhere.
-- **Origin hostnames (my call, avoids a redirect loop):** the rewrites must NOT target the old
-  `gma2-converter.vercel.app` / `gma2-form-helper.vercel.app` hostnames, because those will
-  redirect to the hub. Each tool project's team-scoped production alias
-  (`<project>-take-two-studio.vercel.app`, confirm the exact alias in the Vercel dashboard) is
-  the origin. The legacy hostnames are redirected per-hostname in each project's Vercel
-  **Domains** settings ("Redirect to"), not in app code, so the origin alias stays reachable.
-  Direct hits on the origin alias are handled by the canonical URL. No new DNS records for
-  origins. (Vercel Microfrontends was considered; plain rewrites are enough for two zones.)
-- A light shared header (site name + links to Home / Tools / Guides) is reproduced in each
-  app so the site feels like one place. Exact markup is the builder's call; keep it small.
+- **Origin hostnames (my call, avoids a redirect loop; revised while planning):** the rewrites
+  must NOT target the old `gma2-converter.vercel.app` / `gma2-form-helper.vercel.app`
+  hostnames, because those will redirect to the hub. The team-scoped aliases
+  (`<project>-take-two-studio.vercel.app`) can't be used either: the team's Vercel
+  Authentication (Standard Protection) puts them behind SSO (verified: they 302 to
+  `vercel.com/sso-api`). So each tool project gets one extra, explicitly added `.vercel.app`
+  production domain as its origin (e.g. `gma2-converter-origin.vercel.app`,
+  `gma2-form-helper-origin.vercel.app`; explicitly added domains are public, like the current
+  ones). No DNS records needed. Direct hits on an origin are handled by the canonical URL.
+- **Legacy redirects** are host-conditioned redirects in each tool's own config (`has: host`),
+  so `gma2-converter.vercel.app/<path>` → `https://gma2.chienchuanw.com/convert/<path>` and
+  `gma2-form-helper.vercel.app/<path>` → `https://gma2.chienchuanw.com/form/<path>` (308),
+  while requests arriving via the origin hostname are served normally. This keeps the
+  `/convert` / `/form` prefix, which Vercel's Domains "Redirect to" setting can't add.
+  (Vercel Microfrontends was considered; plain rewrites are enough for two zones.)
 
 ### 2. convertor re-based to `/convert`
 
 - `basePath: '/convert'` in `next.config.ts`; verify static assets, `icon.svg`, and
   any absolute URLs work under the prefix.
-- The old `gma2-converter.vercel.app` root redirects 308 to
-  `https://gma2.chienchuanw.com/convert` (path preserved).
+- The old `gma2-converter.vercel.app` redirects 308 to
+  `https://gma2.chienchuanw.com/convert` (path preserved; see Legacy redirects).
 - Requests reaching the convertor project directly (not via the hub) should not be indexed as
   a duplicate site: canonical URL points at `gma2.chienchuanw.com/convert`.
 
@@ -123,7 +128,8 @@ Owner picked A on the recommendation.
 - Vite `base: '/form/'`. The hub rewrite can either keep or strip the `/form` prefix; the
   builder picks whichever makes the deployed asset paths resolve (stripping the prefix lets
   Vite's default `dist/` layout work unchanged).
-- Old `gma2-form-helper.vercel.app` redirects 308 to `https://gma2.chienchuanw.com/form`.
+- Old `gma2-form-helper.vercel.app` redirects 308 to `https://gma2.chienchuanw.com/form`
+  (see Legacy redirects).
 - Canonical URL as for convertor.
 
 ### 4. Content
@@ -175,7 +181,7 @@ Owner picked A on the recommendation.
 
 - Builder (with the owner's go-ahead at each step): create the hub GitHub repo with `gh`;
   create the Vercel project in team Take Two Studio and attach `gma2.chienchuanw.com`; set
-  the legacy-hostname redirects in Vercel Domains; open a PR on the personal-site repo for
+  the origin `.vercel.app` domains on both tool projects; open a PR on the personal-site repo for
   `ads.txt`.
 - Owner: add the Cloudflare CNAME (builder supplies the exact value); apply for AdSense and
   configure the Privacy & messaging consent message (needs the owner's Google account); hand
@@ -185,9 +191,10 @@ Owner picked A on the recommendation.
 
 1. Hub skeleton + domain + rewrites; convertor and form-helper re-based; old URLs redirect.
    (No ads yet. Each repo: its own PR into `dev`, then release.)
-   **Order matters (my call):** the hub must be live on `gma2.chienchuanw.com` (DNS + cert)
-   and verified against preview builds of the re-based tools *before* the tools' `basePath` /
-   `base` changes reach production, and the legacy-hostname redirects are switched on last.
+   **Order matters (my call):** the hub goes live on `gma2.chienchuanw.com` (DNS + cert) and
+   the origin domains are added *before* the re-based tools are released to production; the
+   tools' releases (which also turn on their legacy redirects) go last. The hub + re-based
+   tools are verified together locally first (preview deployments are behind SSO).
    Otherwise the current URLs break.
 2. Content: home, about, privacy policy, first guides. Analytics on.
 3. Owner applies for AdSense. On approval: ads.txt, CMP, script + ad units, CSP and privacy
