@@ -1,11 +1,13 @@
 # Development Progress
 
-_Last updated: 2026-11-23 · Current release: **v1.2.0**_
+_Last updated: 2026-11-27 · Current release: **v1.3.0**_
 
 ## Status
 
-**V1.2 is live** at https://gma2-converter.vercel.app (Vercel project
-`gma2-converter`, production deployed from `main` via the Git integration).
+**V1.3 is live** at https://gma2.chienchuanw.com/convert, part of the gma2 tools hub
+(private repo `chienchuanw/gma2-hub`), which proxies `/convert` to this project's origin
+`gma2-converter-origin.vercel.app`. The old https://gma2-converter.vercel.app 308-redirects there.
+Vercel project `gma2-converter`, production deployed from `main` via the Git integration.
 
 | Area | State |
 | --- | --- |
@@ -14,8 +16,8 @@ _Last updated: 2026-11-23 · Current release: **v1.2.0**_
 | Converter UI (`src/app/page.tsx`) | Done — Figma redesign (step cards, diff table, common targets); raw `<MA>` tag, reading state, field-level warnings; strict UTF-8 input; user-profile caveat; batch / folder → zip |
 | Privacy guard | Done — CSP `connect-src 'self'` blocks any off-origin request |
 | Real-software verification | Done — converted files load on onPC 3.3.4.1, 3.7.0.5, 3.9.0.3, 3.9.60.50 (see `docs/grandma2-versions.md`) |
-| Deployment | Done — production on Vercel |
-| Tests | 93 passing (Vitest: core, encoding, caveats, batch, folder walk; UI verified in the browser) |
+| Deployment | Done — production on Vercel, served under `/convert` behind the hub (`basePath`) |
+| Tests | 96 passing (Vitest: core, encoding, caveats, batch, folder walk; UI verified in the browser) |
 
 ## Milestones
 
@@ -37,6 +39,9 @@ _Last updated: 2026-11-23 · Current release: **v1.2.0**_
 | 2026-11-22 | [#22](https://github.com/chienchuanw/gma2-version-convertor/pull/22) | Warn before converting a newer UserProfiles export (closes #19) |
 | 2026-11-22 | [#23](https://github.com/chienchuanw/gma2-version-convertor/pull/23) | Batch-convert files or an exported show folder into one zip (closes #7) |
 | 2026-11-23 | — | **v1.2.0** released (tag `v1.2.0`, GitHub Release) |
+| 2026-11-27 | [#28](https://github.com/chienchuanw/gma2-version-convertor/pull/28) | Design + Phase 1 plan for the gma2 tools hub and AdSense (`docs/superpowers/`) |
+| 2026-11-27 | [#30](https://github.com/chienchuanw/gma2-version-convertor/pull/30) | Serve under `/convert` for the hub; old URL redirects (closes #29) |
+| 2026-11-27 | — | **v1.3.0** released (tag `v1.3.0`, GitHub Release) |
 
 ## Branch flow
 
@@ -61,3 +66,5 @@ Tracked in `SPEC.md` → _Future_:
 - **B: content-aware downgrade** — strip/transform elements an older schema cannot handle.
 - i18n (zh-TW); arbitrary-direction conversion if a use case emerges.
 - Reuse the core in an MCP server / VS Code extension.
+- Hub Phase 2 (guides, about, privacy, analytics) and Phase 3 (AdSense: CSP allowlist, ad unit,
+  privacy wording; the footer's "no analytics" line must change) — see the design doc.

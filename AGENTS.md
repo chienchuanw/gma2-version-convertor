@@ -29,7 +29,8 @@ parse-and-reserialize the whole document. Downgrade only.
   - Cut feature/fix branches from `dev` and open the PR **into `dev`**. Never commit directly to
     `dev` or `main`.
   - Release: once `dev` is verified, open a PR **`dev` → `main`**. Merging to `main` triggers the
-    Vercel production deploy (https://gma2-converter.vercel.app); then tag `vX.Y.Z` on `main`,
+    Vercel production deploy (served at https://gma2.chienchuanw.com/convert via the gma2-hub
+    proxy; the old gma2-converter.vercel.app redirects there); then tag `vX.Y.Z` on `main`,
     publish the GitHub Release, and update `docs/progress.md`.
   - Never delete `dev`, even when it is identical to `main`.
   - The remote is `origin` (git@github.com:chienchuanw/gma2-version-convertor.git).
