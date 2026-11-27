@@ -4,6 +4,6 @@ export default defineConfig({
   test: {
     // The conversion core is pure TS (no DOM); run it in the fast node env.
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.{ts,tsx}"],
   },
 });

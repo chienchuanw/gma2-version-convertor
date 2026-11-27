@@ -134,7 +134,10 @@ export function Footer() {
   return (
     <footer className="border-t border-line px-4 py-6 text-center text-xs leading-[18px]">
       <p className="flex items-center justify-center gap-1 text-fg-muted">
-        {Icon.lock(12)} Runs entirely in your browser. No uploads, no analytics.
+        {Icon.lock(12)} Runs entirely in your browser. Your files are never uploaded.
+        <a href={`${HUB_URL}privacy`} className="underline hover:text-fg">
+          Privacy
+        </a>
       </p>
       <p className="mt-1 text-fg-subtle">
         Not affiliated with or endorsed by MA Lighting. grandMA2 is a trademark of MA Lighting
