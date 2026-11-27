@@ -3,7 +3,8 @@
 A browser-based tool that **downgrades the version marker** of grandMA2 XML files, so an older
 grandMA2 console or grandMA2 onPC can load files exported by a newer version.
 
-**Use it:** https://gma2-converter.vercel.app
+**Use it:** https://gma2.chienchuanw.com/convert, part of the [gma2 tools](https://gma2.chienchuanw.com/) site.
+The old address, https://gma2-converter.vercel.app, redirects there.
 
 ## Table of Contents
 
@@ -115,7 +116,7 @@ npm install
 ### Usage
 
 ```bash
-npm run dev       # local dev server at http://localhost:3000
+npm run dev       # local dev server at http://localhost:3000/convert
 npm test          # run the unit tests (Vitest)
 npm run lint      # ESLint
 npm run build     # production build
