@@ -27,7 +27,9 @@ so the file looks like a native export from the older software.
 
 Everything runs **client-side**: files never leave your machine. This is enforced by a
 Content-Security-Policy (`connect-src 'self'`), so the page cannot make network requests to any
-other origin. You can verify this in your browser's DevTools.
+other origin. You can verify this in your browser's DevTools. The site counts anonymous page views
+with Vercel Web Analytics (no cookies), served from the site's own address, so it stays within that
+policy.
 
 Design decisions:
 
