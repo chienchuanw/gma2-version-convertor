@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import type { FieldDiff } from "@/lib/convert";
 
 export const REPO_URL = "https://github.com/chienchuanw/gma2-version-convertor";
+/** Absolute on purpose: on the origin hostname a relative "/" would not reach the hub. */
+export const HUB_URL = "https://gma2.chienchuanw.com/";
 
 /* ---------- Icons (16px, currentColor) ---------- */
 
@@ -110,14 +112,19 @@ export function Header() {
           </span>
           <span className="text-[17px] font-semibold tracking-tight">gma2 converter</span>
         </span>
-        <a
-          href={REPO_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center gap-1 text-xs font-medium text-fg-muted hover:text-fg"
-        >
-          GitHub {Icon.external(12)}
-        </a>
+        <span className="flex items-center gap-4">
+          <a href={HUB_URL} className="text-xs font-medium text-fg-muted hover:text-fg">
+            gma2 tools
+          </a>
+          <a
+            href={REPO_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1 text-xs font-medium text-fg-muted hover:text-fg"
+          >
+            GitHub {Icon.external(12)}
+          </a>
+        </span>
       </div>
     </header>
   );
